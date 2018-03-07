@@ -1,0 +1,13 @@
+condense_wildcard_suffixes  =  true
+format_strings              =  true
+imports_indent              =  "Block"
+imports_layout              =  "Vertical"
+max_width                   =  150
+normalize_comments          =  true
+reorder_imported_names      =  true
+reorder_imports_in_group    =  true
+reorder_imports             =  true
+report_fixme                =  "Always"
+report_todo                 =  "Always"
+use_try_shorthand           =  true
+wrap_comments               =  true

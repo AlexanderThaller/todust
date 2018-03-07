@@ -1,0 +1,28 @@
+name: 'todust'
+
+settings:
+  - 'SubcommandRequiredElseHelp'
+
+global_settings:
+  - 'ColoredHelp'
+  - 'GlobalVersion'
+  - 'NextLineHelp'
+  - 'VersionlessSubcommands'
+
+args:
+  - datafile_path:
+      global: true
+      help: 'Path to the datadir'
+      long: 'datadir'
+      short: 'D'
+      takes_value: true
+      default_value: '/home/athaller/.local/share/todust/data.csv'
+      value_name: 'path'
+      env: 'TODOUST_DATAFILE_PATH'
+
+subcommands:
+  - add:
+      about: 'Start editor and add note'
+
+  - print:
+      about: 'Print active todos'
