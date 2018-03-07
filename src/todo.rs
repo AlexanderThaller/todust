@@ -58,8 +58,17 @@ impl fmt::Display for Entries {
             let lines = entry.text.lines();
 
             writeln!(f, "\n====\n")?;
+            let mut is_codeblock = false;
             for line in lines {
-                writeln!(f, "{}\n", line)?;
+                if line == "----" {
+                    is_codeblock = !is_codeblock;
+                }
+
+                if is_codeblock {
+                    writeln!(f, "{}", line)?;
+                } else {
+                    writeln!(f, "{}\n", line)?;
+                }
             }
             writeln!(f, "====")?;
 
