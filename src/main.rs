@@ -13,15 +13,23 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate prettytable;
+
 extern crate tempdir;
 
 mod todo;
 
+use chrono::Duration;
 use clap::ArgMatches;
 use failure::{
     Context,
     Error,
     ResultExt,
+};
+use prettytable::{
+    format,
+    Table,
 };
 use std::fs::OpenOptions;
 use std::path::PathBuf;
@@ -52,16 +60,15 @@ fn run() -> Result<(), Error> {
         .get_matches();
 
     match matches.subcommand_name() {
-        Some("add") => run_add(
-            matches
-                .subcommand_matches("add")
-                .expect("can not get subcommand matches for add"),
-        ),
-        Some("print") => run_print(
-            matches
-                .subcommand_matches("print")
-                .expect("can not get subcommand matches for print"),
-        ),
+        Some("add") => run_add(matches
+            .subcommand_matches("add")
+            .ok_or_else(|| Context::new("can not get subcommand matches for add"))?),
+        Some("print") => run_print(matches
+            .subcommand_matches("print")
+            .ok_or_else(|| Context::new("can not get subcommand matches for print"))?),
+        Some("list") => run_list(matches
+            .subcommand_matches("list")
+            .ok_or_else(|| Context::new("can not get subcommand matches for list"))?),
         _ => unreachable!(),
     }
 }
@@ -163,4 +170,51 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
         .context("can not read tmpfile to string")?;
 
     Ok(string)
+}
+
+fn run_list(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .from_path(datafile_path)
+        .context("can not create entry reader")?;
+
+    let entries: Entries = rdr.deserialize()
+        .filter(|result| result.is_ok())
+        .map(|result| result.unwrap())
+        .collect::<Entries>()
+        .into_iter()
+        .filter(|entry| entry.is_active())
+        .collect();
+
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+
+    table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
+    for (index, entry) in entries.into_iter().enumerate() {
+        table.add_row(row![index + 1, format_duration(entry.age()), entry]);
+    }
+
+    table.printstd();
+
+    Ok(())
+}
+
+fn format_duration(duration: Duration) -> String {
+    if duration < Duration::minutes(1) {
+        return format!("{}s", duration.num_seconds());
+    }
+
+    if duration < Duration::hours(1) {
+        return format!("{}m", duration.num_minutes());
+    }
+
+    if duration < Duration::hours(24) {
+        return format!("{}h", duration.num_hours());
+    }
+
+    format!("{}d", duration.num_days())
 }

@@ -25,4 +25,7 @@ subcommands:
       about: 'Start editor and add note'
 
   - print:
-      about: 'Print active todos'
+      about: 'Print formatted todos'
+
+  - list:
+      about: 'List active todos'
