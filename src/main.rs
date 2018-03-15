@@ -15,12 +15,15 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate prettytable;
+#[macro_use]
+extern crate text_io;
 
 extern crate tempdir;
 
 mod todo;
 
 use chrono::Duration;
+use chrono::Utc;
 use clap::ArgMatches;
 use failure::{
     Context,
@@ -31,8 +34,10 @@ use prettytable::{
     format,
     Table,
 };
+use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
+use tempdir::TempDir;
 use todo::{
     Entries,
     Entry,
@@ -41,7 +46,7 @@ use todo::{
 fn main() {
     if let Err(e) = run() {
         for cause in e.causes() {
-            error!("{}", cause);
+            eprintln!("{}", cause);
         }
 
         trace!("backtrace:\n{}", e.backtrace());
@@ -69,6 +74,9 @@ fn run() -> Result<(), Error> {
         Some("list") => run_list(matches
             .subcommand_matches("list")
             .ok_or_else(|| Context::new("can not get subcommand matches for list"))?),
+        Some("done") => run_done(matches
+            .subcommand_matches("done")
+            .ok_or_else(|| Context::new("can not get subcommand matches for done"))?),
         _ => unreachable!(),
     }
 }
@@ -111,8 +119,10 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let entry_id = matches.value_of("entry_id");
+
     let mut rdr = csv::ReaderBuilder::new()
-        .from_path(datafile_path)
+        .from_path(&datafile_path)
         .context("can not create entry reader")?;
 
     let entries: Entries = rdr.deserialize()
@@ -120,23 +130,171 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .map(|result| result.unwrap())
         .collect();
 
-    println!("{}", entries);
+    if entry_id.is_none() {
+        println!("{}", entries);
+        return Ok(());
+    }
+
+    let entry_id = entry_id
+        .unwrap()
+        .parse::<usize>()
+        .context("can not parse entry_id")?;
+
+    let active_entries: Entries = entries
+        .clone()
+        .into_iter()
+        .filter(|entry| entry.is_active())
+        .collect();
+
+    if active_entries.len() < entry_id {
+        bail!("no active entry found with id {}", entry_id)
+    }
+
+    let (_, entry) = active_entries
+        .into_iter()
+        .enumerate()
+        .nth(entry_id - 1)
+        .unwrap();
+
+    println!("{}", entry.to_string());
 
     Ok(())
 }
 
+fn run_list(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .from_path(&datafile_path)
+        .context("can not create entry reader")?;
+
+    let entries: Entries = rdr.deserialize()
+        .filter(|result| result.is_ok())
+        .map(|result| result.unwrap())
+        .collect::<Entries>()
+        .into_iter()
+        .filter(|entry| entry.is_active())
+        .collect();
+
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+
+    table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
+    for (index, entry) in entries.into_iter().enumerate() {
+        table.add_row(row![
+            index + 1,
+            format_duration(entry.age()),
+            format!("{}", entry)
+        ]);
+    }
+
+    table.printstd();
+
+    Ok(())
+}
+
+fn run_done(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+
+    if entry_id < 1 {
+        bail!("entry id can not be smaller than 1")
+    }
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .from_path(&datafile_path)
+        .context("can not create entry reader")?;
+
+    let mut entries: Entries = rdr.deserialize()
+        .filter(|result| result.is_ok())
+        .map(|result| result.unwrap())
+        .collect();
+
+    let active_entries: Entries = entries
+        .clone()
+        .into_iter()
+        .filter(|entry| entry.is_active())
+        .collect();
+
+    trace!(
+        "active_entries: {}, entry_id: {}",
+        active_entries.len(),
+        entry_id
+    );
+
+    if active_entries.len() < entry_id {
+        bail!("no active entry found with id {}", entry_id)
+    }
+
+    let (_, entry) = active_entries
+        .into_iter()
+        .enumerate()
+        .nth(entry_id - 1)
+        .unwrap();
+
+    let message = format!("do you want to finish this entry?:\n{}", entry.to_string());
+    if !confirm(&message, false)? {
+        bail!("not finishing task then")
+    }
+
+    entries.remove(&entry);
+
+    let entry = Entry {
+        finished: Some(Utc::now()),
+        ..entry
+    };
+
+    entries.insert(entry);
+
+    let tmpdir = TempDir::new("todust_tmp").unwrap();
+    let tmppath = tmpdir.path().join("data.csv");
+
+    {
+        let mut wtr = csv::Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
+
+        for entry in entries {
+            wtr.serialize(entry).context("can not serialize entry")?;
+        }
+    }
+
+    ::std::fs::copy(tmppath, datafile_path).context("can not move new datafile to datafile_path")?;
+
+    Ok(())
+}
+
+fn format_duration(duration: Duration) -> String {
+    if duration < Duration::minutes(1) {
+        return format!("{}s", duration.num_seconds());
+    }
+
+    if duration < Duration::hours(1) {
+        return format!("{}m", duration.num_minutes());
+    }
+
+    if duration < Duration::hours(24) {
+        return format!("{}h", duration.num_hours());
+    }
+
+    format!("{}d", duration.num_days())
+}
+
 pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     use std::env;
-    use std::fs::File;
     use std::io::{
         Read,
         Write,
     };
     use std::process::Command;
-    use tempdir::TempDir;
 
     let tmpdir = TempDir::new("todust_tmp").unwrap();
-    let tmppath = tmpdir.path().join("note.asciidoc");
+    let tmppath = tmpdir.path().join("todo.asciidoc");
     let editor = {
         match env::var("VISUAL") {
             Ok(editor) => editor,
@@ -172,49 +330,15 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     Ok(string)
 }
 
-fn run_list(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
+fn confirm(message: &str, default: bool) -> Result<bool, Error> {
+    let default_text = if default { "Y/n" } else { "N/y" };
 
-    let mut rdr = csv::ReaderBuilder::new()
-        .from_path(datafile_path)
-        .context("can not create entry reader")?;
+    println!("{}\n({}): ", message, default_text);
+    let input: String = read!("{}\n");
 
-    let entries: Entries = rdr.deserialize()
-        .filter(|result| result.is_ok())
-        .map(|result| result.unwrap())
-        .collect::<Entries>()
-        .into_iter()
-        .filter(|entry| entry.is_active())
-        .collect();
-
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-
-    table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
-    for (index, entry) in entries.into_iter().enumerate() {
-        table.add_row(row![index + 1, format_duration(entry.age()), entry]);
+    match input.trim().to_uppercase().as_str() {
+        "Y" | "YES" => Ok(true),
+        "N" | "NO" => Ok(false),
+        _ => bail!("do not know what to do with {}", input),
     }
-
-    table.printstd();
-
-    Ok(())
-}
-
-fn format_duration(duration: Duration) -> String {
-    if duration < Duration::minutes(1) {
-        return format!("{}s", duration.num_seconds());
-    }
-
-    if duration < Duration::hours(1) {
-        return format!("{}m", duration.num_minutes());
-    }
-
-    if duration < Duration::hours(24) {
-        return format!("{}h", duration.num_hours());
-    }
-
-    format!("{}d", duration.num_days())
 }

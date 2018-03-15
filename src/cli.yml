@@ -26,6 +26,22 @@ subcommands:
 
   - print:
       about: 'Print formatted todos'
+      args:
+        - entry_id:
+            help: 'id of the task'
+            index: 1
+            takes_value: true
+            value_name: 'id'
 
   - list:
       about: 'List active todos'
+
+  - done:
+      about: 'Mark entry as done'
+      args:
+        - entry_id:
+            help: 'id of the task'
+            index: 1
+            takes_value: true
+            required: true
+            value_name: 'id'

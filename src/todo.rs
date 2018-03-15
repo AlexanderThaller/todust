@@ -7,13 +7,14 @@ use std::fmt;
 use std::iter::FromIterator;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Entry {
     pub started: DateTime<Utc>,
     pub finished: Option<DateTime<Utc>>,
-    uuid: Uuid,
+    pub uuid: Uuid,
     pub text: String,
 }
+
 impl Default for Entry {
     fn default() -> Self {
         Self {
@@ -37,6 +38,10 @@ impl Entry {
     pub fn age(&self) -> ::chrono::Duration {
         Utc::now().signed_duration_since(self.started)
     }
+
+    pub fn to_string(&self) -> String {
+        format!("{}\n{}", self.started, self.text)
+    }
 }
 
 impl fmt::Display for Entry {
@@ -44,15 +49,30 @@ impl fmt::Display for Entry {
         let line = self.text
             .replace("\n", " ")
             .chars()
-            .take(50)
+            .take(100)
             .fold(String::new(), |acc, x| format!("{}{}", acc, x));
 
         write!(f, "{}", line)
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Entries {
     entries: BTreeSet<Entry>,
+}
+
+impl Entries {
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn insert(&mut self, entry: Entry) -> bool {
+        self.entries.insert(entry)
+    }
+
+    pub fn remove(&mut self, entry: &Entry) -> bool {
+        self.entries.remove(entry)
+    }
 }
 
 impl fmt::Display for Entries {
@@ -65,7 +85,7 @@ impl fmt::Display for Entries {
                 .text
                 .replace("\n", " ")
                 .chars()
-                .take(50)
+                .take(100)
                 .fold(String::new(), |acc, x| format!("{}{}", acc, x));
 
             writeln!(f, "=== {}\n", headline)?;
