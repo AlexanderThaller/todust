@@ -1,7 +1,4 @@
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;

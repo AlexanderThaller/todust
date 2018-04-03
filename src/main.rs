@@ -25,23 +25,13 @@ mod todo;
 use chrono::Duration;
 use chrono::Utc;
 use clap::ArgMatches;
-use failure::{
-    Context,
-    Error,
-    ResultExt,
-};
-use prettytable::{
-    format,
-    Table,
-};
+use failure::{Context, Error, ResultExt};
+use prettytable::{format, Table};
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tempdir::TempDir;
-use todo::{
-    Entries,
-    Entry,
-};
+use todo::{Entries, Entry};
 
 fn main() {
     if let Err(e) = run() {
@@ -287,10 +277,7 @@ fn format_duration(duration: Duration) -> String {
 
 pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     use std::env;
-    use std::io::{
-        Read,
-        Write,
-    };
+    use std::io::{Read, Write};
     use std::process::Command;
 
     let tmpdir = TempDir::new("todust_tmp").unwrap();
