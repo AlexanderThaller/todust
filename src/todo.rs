@@ -25,7 +25,7 @@ impl Default for Entry {
 
 impl Entry {
     pub fn with_text(self, text: String) -> Self {
-        Self { text: text, ..self }
+        Self { text, ..self }
     }
 
     pub fn is_active(&self) -> bool {

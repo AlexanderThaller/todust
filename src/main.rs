@@ -109,6 +109,8 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let no_done = matches.is_present("no_done");
+
     let entry_id = matches.value_of("entry_id");
 
     let mut rdr = csv::ReaderBuilder::new()
@@ -121,7 +123,16 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .collect();
 
     if entry_id.is_none() {
-        println!("{}", entries);
+        if no_done {
+            let entries: Entries = entries
+                .into_iter()
+                .filter(|entry| entry.is_active())
+                .collect();
+            println!("{}", entries);
+        } else {
+            println!("{}", entries);
+        }
+
         return Ok(());
     }
 

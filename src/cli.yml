@@ -28,10 +28,14 @@ subcommands:
       about: 'Print formatted todos'
       args:
         - entry_id:
-            help: 'id of the task'
+            help: 'id of the task. if none is given all tasks will be printed'
             index: 1
             takes_value: true
             value_name: 'id'
+        - no_done:
+            help: 'dont print done tasks if specified'
+            long: 'no_done'
+            short: 'n'
 
   - list:
       about: 'List active todos'
