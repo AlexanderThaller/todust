@@ -49,3 +49,18 @@ subcommands:
             takes_value: true
             required: true
             value_name: 'id'
+
+  - edit:
+      about: 'Open entry in editor'
+      args:
+        - entry_id:
+            help: 'id of the task'
+            index: 1
+            takes_value: true
+            required: true
+            value_name: 'id'
+
+        - update_time:
+            help: 'update started time of todo to current time if specified'
+            long: 'update_time'
+            short: 'u'

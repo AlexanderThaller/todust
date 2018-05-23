@@ -25,13 +25,23 @@ mod todo;
 use chrono::Duration;
 use chrono::Utc;
 use clap::ArgMatches;
-use failure::{Context, Error, ResultExt};
-use prettytable::{format, Table};
+use failure::{
+    Context,
+    Error,
+    ResultExt,
+};
+use prettytable::{
+    format,
+    Table,
+};
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use tempdir::TempDir;
-use todo::{Entries, Entry};
+use todo::{
+    Entries,
+    Entry,
+};
 
 fn main() {
     if let Err(e) = run() {
@@ -67,6 +77,9 @@ fn run() -> Result<(), Error> {
         Some("done") => run_done(matches
             .subcommand_matches("done")
             .ok_or_else(|| Context::new("can not get subcommand matches for done"))?),
+        Some("edit") => run_edit(matches
+            .subcommand_matches("edit")
+            .ok_or_else(|| Context::new("can not get subcommand matches for edit"))?),
         _ => unreachable!(),
     }
 }
@@ -91,12 +104,9 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
         ),
     };
 
-    let mut wtr = csv::WriterBuilder::new()
-        .has_headers(new_file)
-        .from_writer(file);
+    let mut wtr = csv::WriterBuilder::new().has_headers(new_file).from_writer(file);
 
-    wtr.serialize(entry)
-        .context("can not serialize entry to csv")?;
+    wtr.serialize(entry).context("can not serialize entry to csv")?;
 
     wtr.flush().context("can not flush csv writer")?;
 
@@ -117,17 +127,11 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .from_path(&datafile_path)
         .context("can not create entry reader")?;
 
-    let entries: Entries = rdr.deserialize()
-        .filter(|result| result.is_ok())
-        .map(|result| result.unwrap())
-        .collect();
+    let entries: Entries = rdr.deserialize().filter(|result| result.is_ok()).map(|result| result.unwrap()).collect();
 
     if entry_id.is_none() {
         if no_done {
-            let entries: Entries = entries
-                .into_iter()
-                .filter(|entry| entry.is_active())
-                .collect();
+            let entries: Entries = entries.into_iter().filter(|entry| entry.is_active()).collect();
             println!("{}", entries);
         } else {
             println!("{}", entries);
@@ -136,26 +140,15 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         return Ok(());
     }
 
-    let entry_id = entry_id
-        .unwrap()
-        .parse::<usize>()
-        .context("can not parse entry_id")?;
+    let entry_id = entry_id.unwrap().parse::<usize>().context("can not parse entry_id")?;
 
-    let active_entries: Entries = entries
-        .clone()
-        .into_iter()
-        .filter(|entry| entry.is_active())
-        .collect();
+    let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
 
     if active_entries.len() < entry_id {
         bail!("no active entry found with id {}", entry_id)
     }
 
-    let (_, entry) = active_entries
-        .into_iter()
-        .enumerate()
-        .nth(entry_id - 1)
-        .unwrap();
+    let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
 
     println!("{}", entry.to_string());
 
@@ -172,7 +165,8 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .from_path(&datafile_path)
         .context("can not create entry reader")?;
 
-    let entries: Entries = rdr.deserialize()
+    let entries: Entries = rdr
+        .deserialize()
         .filter(|result| result.is_ok())
         .map(|result| result.unwrap())
         .collect::<Entries>()
@@ -185,11 +179,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
 
     table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
     for (index, entry) in entries.into_iter().enumerate() {
-        table.add_row(row![
-            index + 1,
-            format_duration(entry.age()),
-            format!("{}", entry)
-        ]);
+        table.add_row(row![index + 1, format_duration(entry.age()), format!("{}", entry)]);
     }
 
     table.printstd();
@@ -213,32 +203,17 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
         .from_path(&datafile_path)
         .context("can not create entry reader")?;
 
-    let mut entries: Entries = rdr.deserialize()
-        .filter(|result| result.is_ok())
-        .map(|result| result.unwrap())
-        .collect();
+    let mut entries: Entries = rdr.deserialize().filter(|result| result.is_ok()).map(|result| result.unwrap()).collect();
 
-    let active_entries: Entries = entries
-        .clone()
-        .into_iter()
-        .filter(|entry| entry.is_active())
-        .collect();
+    let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
 
-    trace!(
-        "active_entries: {}, entry_id: {}",
-        active_entries.len(),
-        entry_id
-    );
+    trace!("active_entries: {}, entry_id: {}", active_entries.len(), entry_id);
 
     if active_entries.len() < entry_id {
         bail!("no active entry found with id {}", entry_id)
     }
 
-    let (_, entry) = active_entries
-        .into_iter()
-        .enumerate()
-        .nth(entry_id - 1)
-        .unwrap();
+    let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
 
     let message = format!("do you want to finish this entry?:\n{}", entry.to_string());
     if !confirm(&message, false)? {
@@ -250,6 +225,68 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
     let entry = Entry {
         finished: Some(Utc::now()),
         ..entry
+    };
+
+    entries.insert(entry);
+
+    let tmpdir = TempDir::new("todust_tmp").unwrap();
+    let tmppath = tmpdir.path().join("data.csv");
+
+    {
+        let mut wtr = csv::Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
+
+        for entry in entries {
+            wtr.serialize(entry).context("can not serialize entry")?;
+        }
+    }
+
+    ::std::fs::copy(tmppath, datafile_path).context("can not move new datafile to datafile_path")?;
+
+    Ok(())
+}
+
+fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+
+    let update_time = matches.is_present("update_time");
+
+    if entry_id < 1 {
+        bail!("entry id can not be smaller than 1")
+    }
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .from_path(&datafile_path)
+        .context("can not create entry reader")?;
+
+    let mut entries: Entries = rdr.deserialize().filter(|result| result.is_ok()).map(|result| result.unwrap()).collect();
+
+    let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
+
+    trace!("active_entries: {}, entry_id: {}", active_entries.len(), entry_id);
+
+    if active_entries.len() < entry_id {
+        bail!("no active entry found with id {}", entry_id)
+    }
+
+    let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
+
+    let new_text = string_from_editor(Some(&entry.text)).context("can not edit entry with editor")?;
+
+    entries.remove(&entry);
+
+    let entry = if update_time {
+        Entry {
+            text: new_text,
+            started: Utc::now(),
+            ..entry
+        }
+    } else {
+        Entry { text: new_text, ..entry }
     };
 
     entries.insert(entry);
@@ -288,7 +325,10 @@ fn format_duration(duration: Duration) -> String {
 
 pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     use std::env;
-    use std::io::{Read, Write};
+    use std::io::{
+        Read,
+        Write,
+    };
     use std::process::Command;
 
     let tmpdir = TempDir::new("todust_tmp").unwrap();
@@ -306,8 +346,7 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     if let Some(content) = prepoluate {
         let mut file = File::create(tmppath.display().to_string()).context("can not open tmp editor file to prepoluate with string")?;
 
-        file.write_all(content.as_bytes())
-            .context("can not prepoluate editor tmp file")?;
+        file.write_all(content.as_bytes()).context("can not prepoluate editor tmp file")?;
     }
 
     let mut editor_command = Command::new(editor);
@@ -322,8 +361,7 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     let mut string = String::new();
     let mut file = File::open(tmppath).context("can not open tmppath for reading")?;
 
-    file.read_to_string(&mut string)
-        .context("can not read tmpfile to string")?;
+    file.read_to_string(&mut string).context("can not read tmpfile to string")?;
 
     Ok(string)
 }

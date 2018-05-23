@@ -1,4 +1,7 @@
-use chrono::{DateTime, Utc};
+use chrono::{
+    DateTime,
+    Utc,
+};
 use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;
@@ -43,7 +46,8 @@ impl Entry {
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let line = self.text
+        let line = self
+            .text
             .replace("\n", " ")
             .chars()
             .take(100)
@@ -110,35 +114,24 @@ impl fmt::Display for Entries {
             }
             writeln!(f, "====")?;
 
-            writeln!(f, "")?;
+            writeln!(f)?;
 
             Ok(())
         };
 
         // Active entries
         writeln!(f, "== Active\n")?;
-        for entry in self.entries
-            .iter()
-            .filter(|entry| entry.finished.is_none())
-            .collect::<BTreeSet<_>>()
-        {
+        for entry in self.entries.iter().filter(|entry| entry.finished.is_none()).collect::<BTreeSet<_>>() {
             fmt_entry(f, entry)?;
         }
 
         // Done entries
         {
-            let done = self.entries
-                .iter()
-                .filter(|entry| entry.finished.is_some())
-                .collect::<BTreeSet<_>>();
+            let done = self.entries.iter().filter(|entry| entry.finished.is_some()).collect::<BTreeSet<_>>();
 
             if !done.is_empty() {
                 writeln!(f, "== Done\n")?;
-                for entry in self.entries
-                    .iter()
-                    .filter(|entry| entry.finished.is_some())
-                    .collect::<BTreeSet<_>>()
-                {
+                for entry in self.entries.iter().filter(|entry| entry.finished.is_some()).collect::<BTreeSet<_>>() {
                     fmt_entry(f, entry)?;
                 }
             }
