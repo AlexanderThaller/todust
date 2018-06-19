@@ -10,6 +10,17 @@ global_settings:
   - 'VersionlessSubcommands'
 
 args:
+  - log_level:
+      default_value: 'info'
+      global: true
+      help: 'Loglevel to run under'
+      long: 'log_level'
+      possible_values: [ 'trace', 'debug', 'info', 'warn', 'error' ]
+      short: 'L'
+      takes_value: true
+      value_name: 'level'
+      env: 'TODUST_LOG_LEVEL'
+
   - datafile_path:
       global: true
       help: 'Path to the datadir'
