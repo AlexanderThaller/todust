@@ -14,7 +14,6 @@ serde_derive = "1"
 tempfile = "3"
 prettytable-rs = "0.7"
 text_io = "0.1"
-unicode-width = "0.1"
 
 [dependencies.chrono]
 features = ["serde"]
@@ -27,7 +26,3 @@ version = "0.6"
 [dependencies.clap]
 features = ["yaml"]
 version = "2"
-
-[dependencies.textwrap]
-version = "0.10"
-features = ["term_size"]

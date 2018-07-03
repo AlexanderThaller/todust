@@ -18,8 +18,6 @@ extern crate serde_derive;
 extern crate prettytable;
 #[macro_use]
 extern crate text_io;
-extern crate textwrap;
-extern crate unicode_width;
 
 extern crate tempfile;
 
@@ -44,7 +42,6 @@ use prettytable::{
 };
 use std::path::PathBuf;
 use todo::Entry;
-use unicode_width::UnicodeWidthStr;
 
 fn main() {
     if let Err(err) = run() {
@@ -178,23 +175,6 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .context("can not get entries from store")?
         .get_active();
 
-    let description_width = {
-        let mut max_width = 0;
-
-        for (index, entry) in (&entries).into_iter().enumerate() {
-            let width = UnicodeWidthStr::width(
-                format!(" {}{} |  ", index + 1, format_duration(entry.age())).as_str(),
-            );
-
-            if max_width < width {
-                max_width = width
-            }
-        }
-
-        let termwidth = textwrap::termwidth();
-        termwidth - max_width
-    };
-
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
 
@@ -203,7 +183,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         table.add_row(row![
             index + 1,
             format_duration(entry.age()),
-            textwrap::fill(format!("{}", entry).as_str(), description_width),
+            format!("{}", entry),
         ]);
     }
 
