@@ -88,14 +88,6 @@ impl Store {
         Ok(entries)
     }
 
-    pub fn get_active_entries(&self) -> Result<Entries, Error> {
-        Ok(self
-            .get_entries()?
-            .into_iter()
-            .filter(|entry| entry.is_active())
-            .collect())
-    }
-
     pub fn entry_done(&self, entry_id: usize) -> Result<(), Error> {
         if entry_id < 1 {
             bail!("entry id can not be smaller than 1")

@@ -1,3 +1,4 @@
+use chrono::Duration;
 use failure::{
     Error,
     ResultExt,
@@ -64,4 +65,20 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
         .context("can not read tmpfile to string")?;
 
     Ok(string)
+}
+
+pub fn format_duration(duration: Duration) -> String {
+    if duration < Duration::minutes(1) {
+        return format!("{}s", duration.num_seconds());
+    }
+
+    if duration < Duration::hours(1) {
+        return format!("{}m", duration.num_minutes());
+    }
+
+    if duration < Duration::hours(24) {
+        return format!("{}h", duration.num_hours());
+    }
+
+    format!("{}d", duration.num_days())
 }

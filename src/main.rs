@@ -25,7 +25,6 @@ mod helper;
 mod store;
 mod todo;
 
-use chrono::Duration;
 use chrono::Utc;
 use clap::ArgMatches;
 use failure::{
@@ -33,16 +32,16 @@ use failure::{
     Error,
     ResultExt,
 };
-use helper::string_from_editor;
+use helper::{
+    format_duration,
+    string_from_editor,
+};
 use prettytable::{
     format,
     Table,
 };
 use std::path::PathBuf;
-use todo::{
-    Entries,
-    Entry,
-};
+use todo::Entry;
 
 fn main() {
     if let Err(err) = run() {
@@ -145,11 +144,7 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
 
     if entry_id.is_none() {
         if no_done {
-            let entries: Entries = entries
-                .into_iter()
-                .filter(|entry| entry.is_active())
-                .collect();
-            println!("{}", entries);
+            println!("{}", entries.get_active());
         } else {
             println!("{}", entries);
         }
@@ -162,22 +157,7 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .parse::<usize>()
         .context("can not parse entry_id")?;
 
-    let active_entries: Entries = entries
-        .clone()
-        .into_iter()
-        .filter(|entry| entry.is_active())
-        .collect();
-
-    if active_entries.len() < entry_id {
-        bail!("no active entry found with id {}", entry_id)
-    }
-
-    let (_, entry) = active_entries
-        .into_iter()
-        .enumerate()
-        .nth(entry_id - 1)
-        .unwrap();
-
+    let entry = entries.entry_by_id(entry_id).context("can not get entry")?;
     println!("{}", entry.to_string());
 
     Ok(())
@@ -191,8 +171,9 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
 
     let store = store::Store::default().with_datafile_path(datafile_path);
     let entries = store
-        .get_active_entries()
-        .context("can not get active entries from store")?;
+        .get_entries()
+        .context("can not get entries from store")?
+        .get_active();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
@@ -241,25 +222,11 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     }
 
     let store = store::Store::default().with_datafile_path(datafile_path);
-    let active_entries = store
-        .get_active_entries()
-        .context("can not get active entries from store")?;
+    let entries = store
+        .get_entries()
+        .context("can not get entries from store")?;
 
-    trace!(
-        "active_entries: {}, entry_id: {}",
-        active_entries.len(),
-        entry_id
-    );
-
-    if active_entries.len() < entry_id {
-        bail!("no active entry found with id {}", entry_id)
-    }
-
-    let (_, old_entry) = active_entries
-        .into_iter()
-        .enumerate()
-        .nth(entry_id - 1)
-        .unwrap();
+    let old_entry = entries.entry_by_id(entry_id).context("can not get entry")?;
 
     let new_text =
         string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
@@ -282,20 +249,4 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         .context("can not update entry")?;
 
     Ok(())
-}
-
-fn format_duration(duration: Duration) -> String {
-    if duration < Duration::minutes(1) {
-        return format!("{}s", duration.num_seconds());
-    }
-
-    if duration < Duration::hours(1) {
-        return format!("{}m", duration.num_minutes());
-    }
-
-    if duration < Duration::hours(24) {
-        return format!("{}h", duration.num_hours());
-    }
-
-    format!("{}d", duration.num_days())
 }

@@ -2,6 +2,7 @@ use chrono::{
     DateTime,
     Utc,
 };
+use failure::Error;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::iter::FromIterator;
@@ -73,6 +74,22 @@ impl Entries {
 
     pub fn remove(&mut self, entry: &Entry) -> bool {
         self.entries.remove(entry)
+    }
+
+    pub fn get_active(self) -> Entries {
+        self.into_iter().filter(|entry| entry.is_active()).collect()
+    }
+
+    pub fn entry_by_id(self, id: usize) -> Result<Entry, Error> {
+        let active_entries: Entries = self.get_active();
+
+        if active_entries.len() < id {
+            bail!("no active entry found with id {}", id)
+        }
+
+        let (_, entry) = active_entries.into_iter().enumerate().nth(id - 1).unwrap();
+
+        Ok(entry)
     }
 }
 
