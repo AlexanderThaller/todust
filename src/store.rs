@@ -57,7 +57,7 @@ impl Store {
         entries.remove(old);
         entries.insert(new);
 
-        let tmpdir = tempdir().unwrap();
+        let tmpdir = tempdir().context("can not create tempdir")?;
         let tmppath = tmpdir.path().join("data.csv");
 
         {
