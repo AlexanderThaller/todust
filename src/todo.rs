@@ -121,17 +121,31 @@ impl fmt::Display for Entries {
 
         // Active entries
         writeln!(f, "== Active\n")?;
-        for entry in self.entries.iter().filter(|entry| entry.finished.is_none()).collect::<BTreeSet<_>>() {
+        for entry in self
+            .entries
+            .iter()
+            .filter(|entry| entry.finished.is_none())
+            .collect::<BTreeSet<_>>()
+        {
             fmt_entry(f, entry)?;
         }
 
         // Done entries
         {
-            let done = self.entries.iter().filter(|entry| entry.finished.is_some()).collect::<BTreeSet<_>>();
+            let done = self
+                .entries
+                .iter()
+                .filter(|entry| entry.finished.is_some())
+                .collect::<BTreeSet<_>>();
 
             if !done.is_empty() {
                 writeln!(f, "== Done\n")?;
-                for entry in self.entries.iter().filter(|entry| entry.finished.is_some()).collect::<BTreeSet<_>>() {
+                for entry in self
+                    .entries
+                    .iter()
+                    .filter(|entry| entry.finished.is_some())
+                    .collect::<BTreeSet<_>>()
+                {
                     fmt_entry(f, entry)?;
                 }
             }

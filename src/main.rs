@@ -72,7 +72,10 @@ fn run() -> Result<(), Error> {
     {
         use simplelog::*;
 
-        if let Err(err) = TermLogger::init(value_t!(matches, "log_level", LevelFilter)?, Config::default()) {
+        if let Err(err) = TermLogger::init(
+            value_t!(matches, "log_level", LevelFilter)?,
+            Config::default(),
+        ) {
             eprintln!("can not initialize logger: {}", err);
             ::std::process::exit(1);
         }
@@ -116,9 +119,12 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
 
     let store = store::Store::default().with_datafile_path(datafile_path);
 
-    let entry = Entry::default().with_text(string_from_editor(None).context("can not get message from editor")?);
+    let entry = Entry::default()
+        .with_text(string_from_editor(None).context("can not get message from editor")?);
 
-    store.add_entry(entry).context("can not add entry to store")?;
+    store
+        .add_entry(entry)
+        .context("can not add entry to store")?;
 
     Ok(())
 }
@@ -133,11 +139,16 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     let entry_id = matches.value_of("entry_id");
 
     let store = store::Store::default().with_datafile_path(datafile_path);
-    let entries = store.get_entries().context("can not get entries from store")?;
+    let entries = store
+        .get_entries()
+        .context("can not get entries from store")?;
 
     if entry_id.is_none() {
         if no_done {
-            let entries: Entries = entries.into_iter().filter(|entry| entry.is_active()).collect();
+            let entries: Entries = entries
+                .into_iter()
+                .filter(|entry| entry.is_active())
+                .collect();
             println!("{}", entries);
         } else {
             println!("{}", entries);
@@ -146,15 +157,26 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         return Ok(());
     }
 
-    let entry_id = entry_id.unwrap().parse::<usize>().context("can not parse entry_id")?;
+    let entry_id = entry_id
+        .unwrap()
+        .parse::<usize>()
+        .context("can not parse entry_id")?;
 
-    let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
+    let active_entries: Entries = entries
+        .clone()
+        .into_iter()
+        .filter(|entry| entry.is_active())
+        .collect();
 
     if active_entries.len() < entry_id {
         bail!("no active entry found with id {}", entry_id)
     }
 
-    let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
+    let (_, entry) = active_entries
+        .into_iter()
+        .enumerate()
+        .nth(entry_id - 1)
+        .unwrap();
 
     println!("{}", entry.to_string());
 
@@ -168,14 +190,20 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .into();
 
     let store = store::Store::default().with_datafile_path(datafile_path);
-    let entries = store.get_active_entries().context("can not get active entries from store")?;
+    let entries = store
+        .get_active_entries()
+        .context("can not get active entries from store")?;
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
 
     table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
     for (index, entry) in entries.into_iter().enumerate() {
-        table.add_row(row![index + 1, format_duration(entry.age()), format!("{}", entry)]);
+        table.add_row(row![
+            index + 1,
+            format_duration(entry.age()),
+            format!("{}", entry)
+        ]);
     }
 
     table.printstd();
@@ -213,17 +241,28 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     }
 
     let store = store::Store::default().with_datafile_path(datafile_path);
-    let active_entries = store.get_active_entries().context("can not get active entries from store")?;
+    let active_entries = store
+        .get_active_entries()
+        .context("can not get active entries from store")?;
 
-    trace!("active_entries: {}, entry_id: {}", active_entries.len(), entry_id);
+    trace!(
+        "active_entries: {}, entry_id: {}",
+        active_entries.len(),
+        entry_id
+    );
 
     if active_entries.len() < entry_id {
         bail!("no active entry found with id {}", entry_id)
     }
 
-    let (_, old_entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
+    let (_, old_entry) = active_entries
+        .into_iter()
+        .enumerate()
+        .nth(entry_id - 1)
+        .unwrap();
 
-    let new_text = string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
+    let new_text =
+        string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
 
     let new_entry = if update_time {
         Entry {
@@ -232,10 +271,15 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
             ..old_entry
         }
     } else {
-        Entry { text: new_text, ..old_entry }
+        Entry {
+            text: new_text,
+            ..old_entry
+        }
     };
 
-    store.update_entry(&old_entry, new_entry).context("can not update entry")?;
+    store
+        .update_entry(&old_entry, new_entry)
+        .context("can not update entry")?;
 
     Ok(())
 }

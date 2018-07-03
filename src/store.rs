@@ -43,7 +43,8 @@ impl Store {
 
         let mut wtr = WriterBuilder::new().has_headers(new_file).from_writer(file);
 
-        wtr.serialize(entry).context("can not serialize entry to csv")?;
+        wtr.serialize(entry)
+            .context("can not serialize entry to csv")?;
 
         wtr.flush().context("can not flush csv writer")?;
 
@@ -60,14 +61,16 @@ impl Store {
         let tmppath = tmpdir.path().join("data.csv");
 
         {
-            let mut wtr = Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
+            let mut wtr =
+                Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
 
             for entry in entries {
                 wtr.serialize(entry).context("can not serialize entry")?;
             }
         }
 
-        ::std::fs::copy(tmppath, &self.datafile_path).context("can not move new datafile to datafile_path")?;
+        ::std::fs::copy(tmppath, &self.datafile_path)
+            .context("can not move new datafile to datafile_path")?;
 
         Ok(())
     }
@@ -86,7 +89,11 @@ impl Store {
     }
 
     pub fn get_active_entries(&self) -> Result<Entries, Error> {
-        Ok(self.get_entries()?.into_iter().filter(|entry| entry.is_active()).collect())
+        Ok(self
+            .get_entries()?
+            .into_iter()
+            .filter(|entry| entry.is_active())
+            .collect())
     }
 
     pub fn entry_done(&self, entry_id: usize) -> Result<(), Error> {
@@ -98,17 +105,33 @@ impl Store {
             .from_path(&self.datafile_path)
             .context("can not create entry reader")?;
 
-        let mut entries: Entries = rdr.deserialize().filter(|result| result.is_ok()).map(|result| result.unwrap()).collect();
+        let mut entries: Entries = rdr
+            .deserialize()
+            .filter(|result| result.is_ok())
+            .map(|result| result.unwrap())
+            .collect();
 
-        let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
+        let active_entries: Entries = entries
+            .clone()
+            .into_iter()
+            .filter(|entry| entry.is_active())
+            .collect();
 
-        trace!("active_entries: {}, entry_id: {}", active_entries.len(), entry_id);
+        trace!(
+            "active_entries: {}, entry_id: {}",
+            active_entries.len(),
+            entry_id
+        );
 
         if active_entries.len() < entry_id {
             bail!("no active entry found with id {}", entry_id)
         }
 
-        let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
+        let (_, entry) = active_entries
+            .into_iter()
+            .enumerate()
+            .nth(entry_id - 1)
+            .unwrap();
 
         let message = format!("do you want to finish this entry?:\n{}", entry.to_string());
         if !confirm(&message, false)? {
@@ -128,14 +151,16 @@ impl Store {
         let tmppath = tmpdir.path().join("data.csv");
 
         {
-            let mut wtr = Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
+            let mut wtr =
+                Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
 
             for entry in entries {
                 wtr.serialize(entry).context("can not serialize entry")?;
             }
         }
 
-        ::std::fs::copy(tmppath, &self.datafile_path).context("can not move new datafile to datafile_path")?;
+        ::std::fs::copy(tmppath, &self.datafile_path)
+            .context("can not move new datafile to datafile_path")?;
 
         Ok(())
     }
