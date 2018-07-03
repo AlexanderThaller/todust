@@ -11,7 +11,7 @@ log = "0.4"
 simplelog = "0.5"
 serde = "1"
 serde_derive = "1"
-tempdir = "0.3"
+tempfile = "3"
 prettytable-rs = "0.7"
 text_io = "0.1"
 

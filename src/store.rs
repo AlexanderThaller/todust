@@ -12,7 +12,7 @@ use failure::{
 use helper::confirm;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use tempdir::TempDir;
+use tempfile::tempdir;
 use todo::{
     Entries,
     Entry,
@@ -57,7 +57,7 @@ impl Store {
         entries.remove(old);
         entries.insert(new);
 
-        let tmpdir = TempDir::new("todust_tmp").unwrap();
+        let tmpdir = tempdir().unwrap();
         let tmppath = tmpdir.path().join("data.csv");
 
         {
@@ -139,7 +139,7 @@ impl Store {
 
         entries.insert(entry);
 
-        let tmpdir = TempDir::new("todust_tmp").unwrap();
+        let tmpdir = tempdir().unwrap();
         let tmppath = tmpdir.path().join("data.csv");
 
         {

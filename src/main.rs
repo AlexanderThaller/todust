@@ -19,7 +19,7 @@ extern crate prettytable;
 #[macro_use]
 extern crate text_io;
 
-extern crate tempdir;
+extern crate tempfile;
 
 mod helper;
 mod store;
