@@ -50,6 +50,28 @@ impl Store {
         Ok(())
     }
 
+    pub fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error> {
+        let mut entries = self.get_entries()?;
+
+        entries.remove(old);
+        entries.insert(new);
+
+        let tmpdir = TempDir::new("todust_tmp").unwrap();
+        let tmppath = tmpdir.path().join("data.csv");
+
+        {
+            let mut wtr = Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
+
+            for entry in entries {
+                wtr.serialize(entry).context("can not serialize entry")?;
+            }
+        }
+
+        ::std::fs::copy(tmppath, &self.datafile_path).context("can not move new datafile to datafile_path")?;
+
+        Ok(())
+    }
+
     pub fn get_entries(&self) -> Result<Entries, Error> {
         let mut rdr = ReaderBuilder::new()
             .from_path(&self.datafile_path)
@@ -61,6 +83,10 @@ impl Store {
             .context("can not deserialize csv entries")?;
 
         Ok(entries)
+    }
+
+    pub fn get_active_entries(&self) -> Result<Entries, Error> {
+        Ok(self.get_entries()?.into_iter().filter(|entry| entry.is_active()).collect())
     }
 
     pub fn entry_done(&self, entry_id: usize) -> Result<(), Error> {

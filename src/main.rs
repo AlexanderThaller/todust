@@ -39,7 +39,6 @@ use prettytable::{
     Table,
 };
 use std::path::PathBuf;
-use tempdir::TempDir;
 use todo::{
     Entries,
     Entry,
@@ -80,21 +79,31 @@ fn run() -> Result<(), Error> {
     }
 
     match matches.subcommand_name() {
-        Some("add") => run_add(matches
-            .subcommand_matches("add")
-            .ok_or_else(|| Context::new("can not get subcommand matches for add"))?),
-        Some("print") => run_print(matches
-            .subcommand_matches("print")
-            .ok_or_else(|| Context::new("can not get subcommand matches for print"))?),
-        Some("list") => run_list(matches
-            .subcommand_matches("list")
-            .ok_or_else(|| Context::new("can not get subcommand matches for list"))?),
-        Some("done") => run_done(matches
-            .subcommand_matches("done")
-            .ok_or_else(|| Context::new("can not get subcommand matches for done"))?),
-        Some("edit") => run_edit(matches
-            .subcommand_matches("edit")
-            .ok_or_else(|| Context::new("can not get subcommand matches for edit"))?),
+        Some("add") => run_add(
+            matches
+                .subcommand_matches("add")
+                .ok_or_else(|| Context::new("can not get subcommand matches for add"))?,
+        ),
+        Some("print") => run_print(
+            matches
+                .subcommand_matches("print")
+                .ok_or_else(|| Context::new("can not get subcommand matches for print"))?,
+        ),
+        Some("list") => run_list(
+            matches
+                .subcommand_matches("list")
+                .ok_or_else(|| Context::new("can not get subcommand matches for list"))?,
+        ),
+        Some("done") => run_done(
+            matches
+                .subcommand_matches("done")
+                .ok_or_else(|| Context::new("can not get subcommand matches for done"))?,
+        ),
+        Some("edit") => run_edit(
+            matches
+                .subcommand_matches("edit")
+                .ok_or_else(|| Context::new("can not get subcommand matches for edit"))?,
+        ),
         _ => unreachable!(),
     }
 }
@@ -159,9 +168,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .into();
 
     let store = store::Store::default().with_datafile_path(datafile_path);
-    let entries = store.get_entries().context("can not get entries from store")?;
-
-    let entries: Entries = entries.into_iter().filter(|entry| entry.is_active()).collect();
+    let entries = store.get_active_entries().context("can not get active entries from store")?;
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
@@ -205,13 +212,8 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let mut rdr = csv::ReaderBuilder::new()
-        .from_path(&datafile_path)
-        .context("can not create entry reader")?;
-
-    let mut entries: Entries = rdr.deserialize().filter(|result| result.is_ok()).map(|result| result.unwrap()).collect();
-
-    let active_entries: Entries = entries.clone().into_iter().filter(|entry| entry.is_active()).collect();
+    let store = store::Store::default().with_datafile_path(datafile_path);
+    let active_entries = store.get_active_entries().context("can not get active entries from store")?;
 
     trace!("active_entries: {}, entry_id: {}", active_entries.len(), entry_id);
 
@@ -219,36 +221,21 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         bail!("no active entry found with id {}", entry_id)
     }
 
-    let (_, entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
+    let (_, old_entry) = active_entries.into_iter().enumerate().nth(entry_id - 1).unwrap();
 
-    let new_text = string_from_editor(Some(&entry.text)).context("can not edit entry with editor")?;
+    let new_text = string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
 
-    entries.remove(&entry);
-
-    let entry = if update_time {
+    let new_entry = if update_time {
         Entry {
             text: new_text,
             started: Utc::now(),
-            ..entry
+            ..old_entry
         }
     } else {
-        Entry { text: new_text, ..entry }
+        Entry { text: new_text, ..old_entry }
     };
 
-    entries.insert(entry);
-
-    let tmpdir = TempDir::new("todust_tmp").unwrap();
-    let tmppath = tmpdir.path().join("data.csv");
-
-    {
-        let mut wtr = csv::Writer::from_path(&tmppath).context("can not open tmpfile for serializing")?;
-
-        for entry in entries {
-            wtr.serialize(entry).context("can not serialize entry")?;
-        }
-    }
-
-    ::std::fs::copy(tmppath, datafile_path).context("can not move new datafile to datafile_path")?;
+    store.update_entry(&old_entry, new_entry).context("can not update entry")?;
 
     Ok(())
 }
