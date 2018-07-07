@@ -23,6 +23,7 @@ extern crate tempfile;
 
 mod helper;
 mod store;
+mod store_csv;
 mod todo;
 
 use chrono::Utc;
@@ -41,6 +42,8 @@ use prettytable::{
     Table,
 };
 use std::path::PathBuf;
+use store::Store;
+use store_csv::CSVStore;
 use todo::Entry;
 
 fn main() {
@@ -116,7 +119,7 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
-    let store = store::Store::default().with_datafile_path(datafile_path);
+    let store = CSVStore::default().with_datafile_path(datafile_path);
 
     let entry = Entry::default()
         .with_text(string_from_editor(None).context("can not get message from editor")?);
@@ -137,7 +140,7 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     let no_done = matches.is_present("no_done");
     let entry_id = matches.value_of("entry_id");
 
-    let store = store::Store::default().with_datafile_path(datafile_path);
+    let store = CSVStore::default().with_datafile_path(datafile_path);
     let entries = store
         .get_entries()
         .context("can not get entries from store")?;
@@ -169,7 +172,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
-    let store = store::Store::default().with_datafile_path(datafile_path);
+    let store = CSVStore::default().with_datafile_path(datafile_path);
     let entries = store
         .get_entries()
         .context("can not get entries from store")?
@@ -200,7 +203,7 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
 
     let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
-    let store = store::Store::default().with_datafile_path(datafile_path);
+    let store = CSVStore::default().with_datafile_path(datafile_path);
 
     store.entry_done(entry_id)?;
 
@@ -221,7 +224,7 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = store::Store::default().with_datafile_path(datafile_path);
+    let store = CSVStore::default().with_datafile_path(datafile_path);
     let entries = store
         .get_entries()
         .context("can not get entries from store")?;
