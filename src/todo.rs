@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Entry {
+    pub project_name: Option<String>,
     pub started: DateTime<Utc>,
     pub finished: Option<DateTime<Utc>>,
     pub uuid: Uuid,
@@ -19,9 +20,10 @@ pub struct Entry {
 impl Default for Entry {
     fn default() -> Self {
         Self {
+            project_name: None,
             started: Utc::now(),
-            uuid: Uuid::new_v4(),
             finished: None,
+            uuid: Uuid::new_v4(),
             text: String::new(),
         }
     }

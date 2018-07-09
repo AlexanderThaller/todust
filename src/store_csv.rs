@@ -20,11 +20,11 @@ use todo::{
 };
 
 #[derive(Default)]
-pub struct CSVStore {
+pub struct CsvStore {
     datafile_path: PathBuf,
 }
 
-impl Store for CSVStore {
+impl Store for CsvStore {
     fn with_datafile_path(self, datafile_path: PathBuf) -> Self {
         Self { datafile_path }
     }

@@ -8,11 +8,11 @@ license = "MIT"
 csv = "1"
 failure = "0.1"
 log = "0.4"
-simplelog = "0.5"
+prettytable-rs = "0.7"
 serde = "1"
 serde_derive = "1"
+simplelog = "0.5"
 tempfile = "3"
-prettytable-rs = "0.7"
 text_io = "0.1"
 
 [dependencies.chrono]
@@ -26,3 +26,7 @@ version = "0.6"
 [dependencies.clap]
 features = ["yaml"]
 version = "2"
+
+[dependencies.rusqlite]
+features = ["chrono"]
+version = "0.13"

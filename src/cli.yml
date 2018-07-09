@@ -27,7 +27,7 @@ args:
       long: 'datadir'
       short: 'D'
       takes_value: true
-      default_value: '/home/athaller/.local/share/todust/data.csv'
+      default_value: '/home/athaller/.local/share/todust/data.sqlite'
       value_name: 'path'
       env: 'TODOUST_DATAFILE_PATH'
 
