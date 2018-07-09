@@ -75,3 +75,13 @@ subcommands:
             help: 'update started time of todo to current time if specified'
             long: 'update_time'
             short: 'u'
+
+  - migrate:
+      about: 'Migrate old entries to new format'
+      args:
+        - from_path:
+            help: 'path of the file from which to migrate from'
+            index: 1
+            takes_value: true
+            required: true
+            value_name: 'path'

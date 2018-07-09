@@ -45,6 +45,7 @@ use prettytable::{
 };
 use std::path::PathBuf;
 use store::Store;
+use store_csv::CsvStore;
 use store_sqlite::SqliteStore;
 use todo::Entry;
 
@@ -110,6 +111,11 @@ fn run() -> Result<(), Error> {
             matches
                 .subcommand_matches("edit")
                 .ok_or_else(|| Context::new("can not get subcommand matches for edit"))?,
+        ),
+        Some("migrate") => run_migrate(
+            matches
+                .subcommand_matches("migrate")
+                .ok_or_else(|| Context::new("can not get subcommand matches for migrate"))?,
         ),
         _ => unreachable!(),
     }
@@ -252,6 +258,35 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     store
         .update_entry(&old_entry, new_entry)
         .context("can not update entry")?;
+
+    Ok(())
+}
+
+fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let from_path: PathBuf = matches
+        .value_of("from_path")
+        .ok_or_else(|| Context::new("can not get from_path from args"))?
+        .into();
+
+    let old_store = CsvStore::default().with_datafile_path(from_path);
+    let new_store = SqliteStore::default().with_datafile_path(datafile_path);
+
+    let entries = old_store
+        .get_entries()
+        .context("can not get entries from old store")?;
+
+    for entry in entries {
+        trace!("entry: {:#?}", entry);
+
+        new_store
+            .add_entry(entry)
+            .context("can not add entry to new store")?;
+    }
 
     Ok(())
 }

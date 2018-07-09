@@ -29,10 +29,10 @@ impl Store for SqliteStore {
         conn.execute(
             include_str!("../resources/sqlite/add_entry.sql"),
             &[
-                &entry.uuid.to_string(),
                 &entry.project_name,
                 &entry.started,
                 &entry.finished,
+                &entry.uuid.to_string(),
                 &entry.text,
             ],
         ).context("can not insert entry")?;
