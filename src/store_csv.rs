@@ -89,6 +89,10 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
+    fn get_active_entries(&self) -> Result<Entries, Error> {
+        Ok(self.get_entries()?.get_active())
+    }
+
     fn entry_done(&self, entry_id: usize) -> Result<(), Error> {
         if entry_id < 1 {
             bail!("entry id can not be smaller than 1")
@@ -156,5 +160,9 @@ impl Store for CsvStore {
             .context("can not move new datafile to datafile_path")?;
 
         Ok(())
+    }
+
+    fn get_entry_by_id(&self, entry_id: usize) -> Result<Entry, Error> {
+        self.get_entries()?.entry_by_id(entry_id)
     }
 }

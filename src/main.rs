@@ -149,14 +149,19 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     let entry_id = matches.value_of("entry_id");
 
     let store = SqliteStore::default().with_datafile_path(datafile_path);
-    let entries = store
-        .get_entries()
-        .context("can not get entries from store")?;
 
     if entry_id.is_none() {
         if no_done {
-            println!("{}", entries.get_active());
+            let entries = store
+                .get_active_entries()
+                .context("can not get entries from store")?;
+
+            println!("{}", entries);
         } else {
+            let entries = store
+                .get_entries()
+                .context("can not get entries from store")?;
+
             println!("{}", entries);
         }
 
@@ -168,7 +173,9 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .parse::<usize>()
         .context("can not parse entry_id")?;
 
-    let entry = entries.entry_by_id(entry_id).context("can not get entry")?;
+    let entry = store
+        .get_entry_by_id(entry_id)
+        .context("can not get entry")?;
     println!("{}", entry.to_string());
 
     Ok(())
@@ -182,9 +189,8 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
 
     let store = SqliteStore::default().with_datafile_path(datafile_path);
     let entries = store
-        .get_entries()
-        .context("can not get entries from store")?
-        .get_active();
+        .get_active_entries()
+        .context("can not get entries from store")?;
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);

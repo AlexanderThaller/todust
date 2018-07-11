@@ -96,6 +96,11 @@ impl Store for SqliteStore {
         Ok(entries)
     }
 
+    fn get_active_entries(&self) -> Result<Entries, Error> {
+        // FIXME: Make this a sqlite query
+        Ok(self.get_entries()?.get_active())
+    }
+
     fn entry_done(&self, entry_id: usize) -> Result<(), Error> {
         let entries = self.get_entries()?;
 
@@ -134,6 +139,11 @@ impl Store for SqliteStore {
         self.update_entry(&entry, new)?;
 
         Ok(())
+    }
+
+    fn get_entry_by_id(&self, entry_id: usize) -> Result<Entry, Error> {
+        // FIXME: Make this a sqlite query
+        self.get_entries()?.entry_by_id(entry_id)
     }
 }
 
