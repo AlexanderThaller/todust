@@ -5,7 +5,10 @@ use failure::{
 };
 use helper::confirm;
 use measure::Measure;
-use rusqlite::Connection;
+use rusqlite::{
+    Connection,
+    Statement,
+};
 use std::path::PathBuf;
 use store::Store;
 use todo::{
@@ -113,41 +116,15 @@ impl Store for OpenSqliteStore {
 
         let mut measure = Measure::default();
 
-        let mut stmt = self
+        let stmt = self
             .db_connection
             .prepare(include_str!("../resources/sqlite/get_entries.sql"))
             .context("can not prepare statement to get entries")?;
 
         trace!("preparted sql after {}", measure.duration());
 
-        let entries =
-            stmt.query_map(&[], |row| {
-                let uuid_raw: String = row.get(3);
-                let uuid = match Uuid::parse_str(&uuid_raw).context("can not parse uuid from row") {
-                    Ok(uuid) => uuid,
-                    Err(err) => {
-                        warn!("can not parse uuid: {}", err);
-                        return None;
-                    }
-                };
-
-                Some(Entry {
-                    project_name: row.get(0),
-                    started: row.get(1),
-                    finished: row.get(2),
-                    uuid,
-                    text: row.get(4),
-                })
-            }).context("can not convert rows to entries")?
-                .filter_map(|entry| match entry {
-                    Ok(entry) => Some(entry),
-                    Err(err) => {
-                        warn!("problem while getting row from sqlite: {}", err);
-                        None
-                    }
-                })
-                .filter_map(|entry| entry)
-                .collect();
+        let entries = sqlite_statement_to_entries(stmt)
+            .context("can not convert sqlite statement to entries")?;
 
         trace!("collected entries after {}", measure.duration());
 
@@ -157,13 +134,19 @@ impl Store for OpenSqliteStore {
     }
 
     fn get_active_entries(&self) -> Result<Entries, Error> {
-        // FIXME: Make this a sqlite query
-
         let mut measure = Measure::default();
 
         debug!("getting active entries");
 
-        let entries = self.get_entries()?.get_active();
+        let stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_active_entries.sql"))
+            .context("can not prepare statement to get entries")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let entries = sqlite_statement_to_entries(stmt)
+            .context("can not convert sqlite statement to entries")?;
 
         trace!("collected active entries after {}", measure.duration());
 
@@ -210,10 +193,43 @@ impl Store for OpenSqliteStore {
 
         let measure = Measure::default();
 
-        let entry = self.get_entries()?.entry_by_id(entry_id)?;
+        let entry = self.get_active_entries()?.entry_by_id(entry_id)?;
 
         debug!("done getting entry by id after {}", measure.done());
 
         Ok(entry)
     }
+}
+
+fn sqlite_statement_to_entries(mut stmt: Statement<'_>) -> Result<Entries, Error> {
+    let entries =
+        stmt.query_map(&[], |row| {
+            let uuid_raw: String = row.get(3);
+            let uuid = match Uuid::parse_str(&uuid_raw).context("can not parse uuid from row") {
+                Ok(uuid) => uuid,
+                Err(err) => {
+                    warn!("can not parse uuid: {}", err);
+                    return None;
+                }
+            };
+
+            Some(Entry {
+                project_name: row.get(0),
+                started: row.get(1),
+                finished: row.get(2),
+                uuid,
+                text: row.get(4),
+            })
+        }).context("can not convert rows to entries")?
+            .filter_map(|entry| match entry {
+                Ok(entry) => Some(entry),
+                Err(err) => {
+                    warn!("problem while getting row from sqlite: {}", err);
+                    None
+                }
+            })
+            .filter_map(|entry| entry)
+            .collect();
+
+    Ok(entries)
 }
