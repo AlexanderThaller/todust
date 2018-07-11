@@ -3,9 +3,22 @@ use chrono::{
     Utc,
 };
 use failure::Error;
-use std::collections::BTreeSet;
+use serde_json::value::{
+    to_value,
+    Value,
+};
+use std::collections::HashMap;
+use std::collections::{
+    BTreeMap,
+    BTreeSet,
+};
 use std::fmt;
 use std::iter::FromIterator;
+use tera::Result as TeraResult;
+use tera::{
+    Context,
+    Tera,
+};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
@@ -105,83 +118,42 @@ impl Entries {
 
 impl fmt::Display for Entries {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let header = include_str!("../resources/header.asciidoc");
-        writeln!(f, "{}", header)?;
+        let mut active: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
+        let mut done: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
 
-        let fmt_entry = |f: &mut fmt::Formatter, entry: &Entry| -> fmt::Result {
-            let headline = entry
-                .text
-                .replace("\n", " ")
-                .chars()
-                .take(100)
-                .fold(String::new(), |acc, x| format!("{}{}", acc, x));
-
-            writeln!(f, "=== {}\n", headline)?;
-            if entry.project_name.is_some() {
-                writeln!(f, "Project:: {}", entry.project_name.as_ref().unwrap())?;
-            }
-            writeln!(f, "UUID:: {}", entry.uuid)?;
-            writeln!(f, "Started:: {}", entry.started)?;
-
-            if entry.finished.is_some() {
-                writeln!(f, "Finished:: {}", entry.finished.unwrap())?;
-            }
-
-            let lines = entry.text.lines();
-
-            writeln!(f, "\n====\n")?;
-            let mut is_codeblock = false;
-            for line in lines {
-                if line == "----" {
-                    is_codeblock = !is_codeblock;
-                }
-
-                if is_codeblock {
-                    writeln!(f, "{}", line)?;
-                } else {
-                    writeln!(f, "{}\n", line)?;
-                }
-            }
-            writeln!(f, "====")?;
-
-            writeln!(f)?;
-
-            Ok(())
-        };
-
-        // Active entries
-        writeln!(f, "== Active\n")?;
-        for entry in self
-            .entries
-            .iter()
-            .filter(|entry| entry.finished.is_none())
-            .collect::<BTreeSet<_>>()
-        {
-            fmt_entry(f, entry)?;
-        }
-
-        // Done entries
-        {
-            let done = self
-                .entries
-                .iter()
-                .filter(|entry| entry.finished.is_some())
-                .collect::<BTreeSet<_>>();
-
-            if !done.is_empty() {
-                writeln!(f, "== Done\n")?;
-                for entry in self
-                    .entries
-                    .iter()
-                    .filter(|entry| entry.finished.is_some())
-                    .collect::<BTreeSet<_>>()
-                {
-                    fmt_entry(f, entry)?;
-                }
+        for entry in &self.entries {
+            if entry.finished.is_none() {
+                active
+                    .entry(entry.project_name.as_ref().unwrap())
+                    .or_insert_with(BTreeSet::default)
+                    .insert(entry);
+            } else {
+                done.entry(entry.project_name.as_ref().unwrap())
+                    .or_insert_with(BTreeSet::default)
+                    .insert(entry);
             }
         }
 
-        Ok(())
+        let mut context = Context::new();
+        context.add("active", &active);
+
+        if !done.is_empty() {
+            context.add("done", &done);
+        }
+
+        let mut tera = Tera::default();
+        tera.add_raw_template(
+            "entries.asciidoc",
+            include_str!("../resources/templates/entries.asciidoc"),
+        ).expect("can not compile entries.asciidoc template");
+        tera.register_filter("single_line", single_line);
+        tera.register_filter("lines", lines);
+
+        let rendered = tera
+            .render("entries.asciidoc", &context)
+            .expect("can not render remplate for entries");
+
+        write!(f, "{}", rendered)
     }
 }
 
@@ -209,4 +181,34 @@ impl<'a> IntoIterator for &'a Entries {
     fn into_iter(self) -> ::std::collections::btree_set::Iter<'a, Entry> {
         self.entries.iter()
     }
+}
+
+fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let s = try_get_value!("single_line", "value", String, value);
+
+    let s = s.replace("\n", " ");
+
+    Ok(to_value(&s).unwrap())
+}
+
+fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let mut out = String::new();
+
+    let s = try_get_value!("lines", "value", String, value);
+    let lines = s.lines();
+    let mut is_codeblock = false;
+    for line in lines {
+        if line == "----" {
+            is_codeblock = !is_codeblock;
+        }
+
+        out.push_str(line);
+        out.push('\n');
+
+        if !is_codeblock {
+            out.push('\n');
+        }
+    }
+
+    Ok(to_value(&out).unwrap())
 }

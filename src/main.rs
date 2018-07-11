@@ -15,11 +15,14 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate rusqlite;
+extern crate serde_json;
 
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
 extern crate text_io;
+#[macro_use]
+extern crate tera;
 
 extern crate tempfile;
 

@@ -1,0 +1,51 @@
+:toc: right
+:toclevels: 3
+:sectanchors:
+:sectlink:
+:icons: font
+:linkattrs:
+:numbered:
+:idprefix:
+:idseparator: -
+:doctype: book
+:source-highlighter: pygments
+:listing-caption: Listing
+:hide-uri-scheme:
+
+= Todos
+
+{% if active is defined -%}
+== Active
+{% for project, entries in active -%}
+=== {{ project }}
+{% for entry in entries -%}
+==== {{ entry.text | single_line | truncate(length=100) }}
+Project:: {{ entry.project_name }}
+UUID:: {{ entry.uuid }}
+Started:: {{ entry.started }}
+
+====
+{{ entry.text | lines | trim }}
+====
+
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
+
+{% if done is defined -%}
+== Done
+{% for project, entries in done -%}
+=== {{ project }}
+{% for entry in entries -%}
+==== {{ entry.text | single_line | truncate(length=100) }}
+Project:: {{ entry.project_name }}
+UUID:: {{ entry.uuid }}
+Started:: {{ entry.started }}
+
+====
+{{ entry.text | lines | trim }}
+====
+
+{% endfor -%}
+{% endfor -%}
+{% endif -%}
