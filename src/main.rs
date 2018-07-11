@@ -124,6 +124,11 @@ fn run() -> Result<(), Error> {
                 .subcommand_matches("projects")
                 .ok_or_else(|| Context::new("can not get subcommand matches for projects"))?,
         ),
+        Some("move") => run_move(
+            matches
+                .subcommand_matches("move")
+                .ok_or_else(|| Context::new("can not get subcommand matches for move"))?,
+        ),
         _ => unreachable!(),
     }
 }
@@ -267,11 +272,9 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         .with_datafile_path(datafile_path)
         .open()?;
 
-    let entries = store
-        .get_entries(project)
-        .context("can not get entries from store")?;
-
-    let old_entry = entries.entry_by_id(entry_id).context("can not get entry")?;
+    let old_entry = store
+        .get_entry_by_id(entry_id, project)
+        .context("can not get entry")?;
 
     let new_text =
         string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
@@ -346,6 +349,38 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
     projects.sort();
 
     println!("{}", projects.join("\n"));
+
+    Ok(())
+}
+
+fn run_move(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let project = matches.value_of("project");
+
+    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+
+    let target_project = matches.value_of("target_project").map(str::to_string);
+
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
+
+    let old_entry = store
+        .get_entry_by_id(entry_id, project)
+        .context("can not get entry")?;
+
+    let new_entry = Entry {
+        project_name: target_project,
+        ..old_entry.clone()
+    };
+
+    store
+        .update_entry(&old_entry, new_entry)
+        .context("can not update entry")?;
 
     Ok(())
 }

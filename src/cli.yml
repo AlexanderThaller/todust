@@ -95,6 +95,23 @@ subcommands:
             required: true
             value_name: 'path'
 
+  - move:
+      about: 'Move entry from current project to target project'
+      args:
+        - entry_id:
+            help: 'id of the task'
+            index: 1
+            takes_value: true
+            required: true
+            value_name: 'id'
+
+        - target_project:
+            help: 'target project'
+            index: 2
+            takes_value: true
+            required: true
+            value_name: 'project_name'
+
   # FIXME: Disable project flag in this subcommand as it doesnt make sense here.
   - projects:
       about: 'Print all projects saved in todust'
