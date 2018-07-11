@@ -4,4 +4,7 @@ SELECT
   finished,
   uuid,
   text
-FROM v1_entries;
+FROM
+  v1_entries
+WHERE
+  project_name IS ?1;

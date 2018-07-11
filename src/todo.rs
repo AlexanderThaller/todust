@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Entry {
+    // FIXME: Rename project_name to project.
     pub project_name: Option<String>,
     pub started: DateTime<Utc>,
     pub finished: Option<DateTime<Utc>>,
@@ -30,6 +31,13 @@ impl Default for Entry {
 }
 
 impl Entry {
+    pub fn with_project(self, project_name: Option<String>) -> Self {
+        Self {
+            project_name,
+            ..self
+        }
+    }
+
     pub fn with_text(self, text: String) -> Self {
         Self { text, ..self }
     }
@@ -109,6 +117,9 @@ impl fmt::Display for Entries {
                 .fold(String::new(), |acc, x| format!("{}{}", acc, x));
 
             writeln!(f, "=== {}\n", headline)?;
+            if entry.project_name.is_some() {
+                writeln!(f, "Project:: {}", entry.project_name.as_ref().unwrap())?;
+            }
             writeln!(f, "UUID:: {}", entry.uuid)?;
             writeln!(f, "Started:: {}", entry.started)?;
 

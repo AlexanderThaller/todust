@@ -111,7 +111,7 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn get_entries(&self) -> Result<Entries, Error> {
+    fn get_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
         debug!("getting entries");
 
         let mut measure = Measure::default();
@@ -123,7 +123,7 @@ impl Store for OpenSqliteStore {
 
         trace!("preparted sql after {}", measure.duration());
 
-        let entries = sqlite_statement_to_entries(stmt)
+        let entries = sqlite_statement_to_entries(stmt, project)
             .context("can not convert sqlite statement to entries")?;
 
         trace!("collected entries after {}", measure.duration());
@@ -133,7 +133,7 @@ impl Store for OpenSqliteStore {
         Ok(entries)
     }
 
-    fn get_active_entries(&self) -> Result<Entries, Error> {
+    fn get_active_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
         let mut measure = Measure::default();
 
         debug!("getting active entries");
@@ -145,7 +145,7 @@ impl Store for OpenSqliteStore {
 
         trace!("preparted sql after {}", measure.duration());
 
-        let entries = sqlite_statement_to_entries(stmt)
+        let entries = sqlite_statement_to_entries(stmt, project)
             .context("can not convert sqlite statement to entries")?;
 
         trace!("collected active entries after {}", measure.duration());
@@ -155,13 +155,13 @@ impl Store for OpenSqliteStore {
         Ok(entries)
     }
 
-    fn entry_done(&self, entry_id: usize) -> Result<(), Error> {
+    fn entry_done(&self, entry_id: usize, project: Option<&str>) -> Result<(), Error> {
         debug!("marking entry as done");
 
         let mut measure = Measure::default();
 
         let entry = self
-            .get_entry_by_id(entry_id)
+            .get_entry_by_id(entry_id, project)
             .context(format!("can not get entry with id {}", entry_id))?;
 
         trace!("got entry after {}", measure.duration());
@@ -187,23 +187,64 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn get_entry_by_id(&self, entry_id: usize) -> Result<Entry, Error> {
+    fn get_entry_by_id(&self, entry_id: usize, project: Option<&str>) -> Result<Entry, Error> {
         // FIXME: Make this a sqlite query
         debug!("getting entry by id");
 
         let measure = Measure::default();
 
-        let entry = self.get_active_entries()?.entry_by_id(entry_id)?;
+        let entry = self.get_active_entries(project)?.entry_by_id(entry_id)?;
 
         debug!("done getting entry by id after {}", measure.done());
 
         Ok(entry)
     }
+
+    fn get_projects(&self) -> Result<Vec<String>, Error> {
+        let mut measure = Measure::default();
+
+        debug!("getting projects");
+
+        let mut stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_projects.sql"))
+            .context("can not prepare statement for query get_projects")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let projects = stmt
+            .query_map(&[], |row| row.get(0))
+            .context("can not convert rows to projects")?
+            .filter_map(|project| match project {
+                Ok(project) => Some(project),
+                Err(err) => {
+                    warn!("problem while getting row from sqlite: {}", err);
+                    None
+                }
+            })
+            .collect::<Vec<Option<String>>>()
+            .into_iter()
+            .map(|project| {
+                if project.is_none() {
+                    String::from("<none>")
+                } else {
+                    project.unwrap()
+                }
+            })
+            .collect();
+
+        debug!("done getting projects after {}", measure.done());
+
+        Ok(projects)
+    }
 }
 
-fn sqlite_statement_to_entries(mut stmt: Statement<'_>) -> Result<Entries, Error> {
+fn sqlite_statement_to_entries(
+    mut stmt: Statement<'_>,
+    project: Option<&str>,
+) -> Result<Entries, Error> {
     let entries =
-        stmt.query_map(&[], |row| {
+        stmt.query_map(&[&project], |row| {
             let uuid_raw: String = row.get(3);
             let uuid = match Uuid::parse_str(&uuid_raw).context("can not parse uuid from row") {
                 Ok(uuid) => uuid,

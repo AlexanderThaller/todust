@@ -7,4 +7,6 @@ SELECT
 FROM
   v1_entries
 WHERE
-  finished IS null;
+  finished IS null
+AND
+  project_name IS ?1;

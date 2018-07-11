@@ -1,4 +1,4 @@
-
 /target
 **/*.rs.bk
 **/*.rs.rustfmt
+/data.sqlite

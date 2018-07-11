@@ -40,7 +40,7 @@ impl Store for CsvStore {
         unimplemented!()
     }
 
-    fn get_entries(&self) -> Result<Entries, Error> {
+    fn get_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
         let mut rdr = ReaderBuilder::new()
             .from_path(&self.datafile_path)
             .context("can not create entry reader")?;
@@ -53,15 +53,19 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_active_entries(&self) -> Result<Entries, Error> {
+    fn get_active_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
         unimplemented!()
     }
 
-    fn entry_done(&self, _entry_id: usize) -> Result<(), Error> {
+    fn entry_done(&self, _entry_id: usize, _project: Option<&str>) -> Result<(), Error> {
         unimplemented!()
     }
 
-    fn get_entry_by_id(&self, _entry_id: usize) -> Result<Entry, Error> {
+    fn get_entry_by_id(&self, _entry_id: usize, _project: Option<&str>) -> Result<Entry, Error> {
+        unimplemented!()
+    }
+
+    fn get_projects(&self) -> Result<Vec<String>, Error> {
         unimplemented!()
     }
 }

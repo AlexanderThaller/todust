@@ -119,6 +119,11 @@ fn run() -> Result<(), Error> {
                 .subcommand_matches("migrate")
                 .ok_or_else(|| Context::new("can not get subcommand matches for migrate"))?,
         ),
+        Some("projects") => run_projects(
+            matches
+                .subcommand_matches("projects")
+                .ok_or_else(|| Context::new("can not get subcommand matches for projects"))?,
+        ),
         _ => unreachable!(),
     }
 }
@@ -134,7 +139,8 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
         .open()?;
 
     let entry = Entry::default()
-        .with_text(string_from_editor(None).context("can not get message from editor")?);
+        .with_text(string_from_editor(None).context("can not get message from editor")?)
+        .with_project(matches.value_of("project").map(str::to_string));
 
     store
         .add_entry(entry)
@@ -149,6 +155,8 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let project = matches.value_of("project");
+
     let no_done = matches.is_present("no_done");
     let entry_id = matches.value_of("entry_id");
 
@@ -159,13 +167,13 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     if entry_id.is_none() {
         if no_done {
             let entries = store
-                .get_active_entries()
+                .get_active_entries(project)
                 .context("can not get entries from store")?;
 
             println!("{}", entries);
         } else {
             let entries = store
-                .get_entries()
+                .get_entries(project)
                 .context("can not get entries from store")?;
 
             println!("{}", entries);
@@ -180,7 +188,7 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
         .context("can not parse entry_id")?;
 
     let entry = store
-        .get_entry_by_id(entry_id)
+        .get_entry_by_id(entry_id, project)
         .context("can not get entry")?;
     println!("{}", entry.to_string());
 
@@ -193,12 +201,14 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let project = matches.value_of("project");
+
     let store = SqliteStore::default()
         .with_datafile_path(datafile_path)
         .open()?;
 
     let entries = store
-        .get_active_entries()
+        .get_active_entries(project)
         .context("can not get entries from store")?;
 
     let mut table = Table::new();
@@ -224,13 +234,15 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let project = matches.value_of("project");
+
     let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
     let store = SqliteStore::default()
         .with_datafile_path(datafile_path)
         .open()?;
 
-    store.entry_done(entry_id)?;
+    store.entry_done(entry_id, project)?;
 
     Ok(())
 }
@@ -240,6 +252,8 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
+
+    let project = matches.value_of("project");
 
     let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
@@ -252,8 +266,9 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     let store = SqliteStore::default()
         .with_datafile_path(datafile_path)
         .open()?;
+
     let entries = store
-        .get_entries()
+        .get_entries(project)
         .context("can not get entries from store")?;
 
     let old_entry = entries.entry_by_id(entry_id).context("can not get entry")?;
@@ -287,6 +302,8 @@ fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let project = matches.value_of("project");
+
     let from_path: PathBuf = matches
         .value_of("from_path")
         .ok_or_else(|| Context::new("can not get from_path from args"))?
@@ -298,7 +315,7 @@ fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
         .open()?;
 
     let entries = old_store
-        .get_entries()
+        .get_entries(project)
         .context("can not get entries from old store")?;
 
     for entry in entries {
@@ -308,6 +325,27 @@ fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
             .add_entry(entry)
             .context("can not add entry to new store")?;
     }
+
+    Ok(())
+}
+
+fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
+    let datafile_path: PathBuf = matches
+        .value_of("datafile_path")
+        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
+        .into();
+
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
+
+    let mut projects = store
+        .get_projects()
+        .context("can not get projects from store")?;
+
+    projects.sort();
+
+    println!("{}", projects.join("\n"));
 
     Ok(())
 }
