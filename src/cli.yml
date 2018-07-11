@@ -37,6 +37,7 @@ args:
       long: 'project'
       short: 'P'
       takes_value: true
+      default_value: 'default'
       value_name: 'project_name'
       env: 'TODUST_PROJECT'
 

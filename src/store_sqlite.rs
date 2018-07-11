@@ -40,7 +40,7 @@ impl SqliteStore {
         let mut measure = Measure::default();
 
         let db_connection =
-            Connection::open(self.datafile_path).context("can not open sqlite database file")?;
+            Connection::open(&self.datafile_path).context("can not open sqlite database file")?;
 
         trace!("connected to database after {}", measure.duration());
 
@@ -50,9 +50,45 @@ impl SqliteStore {
 
         trace!("ran schema query after {}", measure.duration());
 
+        self.migration(&db_connection)
+            .context("can not run migration")?;
+
+        trace!("ran migration after {}", measure.duration());
+
         debug!("done connecting to database after {}", measure.done());
 
         Ok(OpenSqliteStore { db_connection })
+    }
+
+    fn migration(&self, db_connection: &Connection) -> Result<(), Error> {
+        self.migration_v1_null_project_to_default_project(db_connection)?;
+
+        Ok(())
+    }
+
+    fn migration_v1_null_project_to_default_project(
+        &self,
+        db_connection: &Connection,
+    ) -> Result<(), Error> {
+        debug!("running migration v1 null_project_to_default_project");
+
+        let measure = Measure::default();
+
+        db_connection
+            .execute(
+                include_str!(
+                    "../resources/sqlite/migration/v1/null_project_to_default_project.sql"
+                ),
+                &[],
+            )
+            .context("can not run v1 migration null_project_to_default_project")?;
+
+        debug!(
+            "done running migration v1 null_project_to_default_project after {}",
+            measure.done()
+        );
+
+        Ok(())
     }
 }
 
