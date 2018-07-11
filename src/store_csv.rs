@@ -24,11 +24,13 @@ pub struct CsvStore {
     datafile_path: PathBuf,
 }
 
-impl Store for CsvStore {
-    fn with_datafile_path(self, datafile_path: PathBuf) -> Self {
+impl CsvStore {
+    pub fn with_datafile_path(self, datafile_path: PathBuf) -> Self {
         Self { datafile_path }
     }
+}
 
+impl Store for CsvStore {
     fn add_entry(&self, entry: Entry) -> Result<(), Error> {
         let (file, new_file) = match OpenOptions::new().append(true).open(&self.datafile_path) {
             Ok(file) => (file, false),
