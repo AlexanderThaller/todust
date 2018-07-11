@@ -14,17 +14,30 @@ use todo::{
 };
 use uuid::Uuid;
 
-#[derive(Default)]
-pub struct SqliteStore {}
+pub struct SqliteStore {
+    datafile_path: PathBuf,
+}
+
+impl Default for SqliteStore {
+    fn default() -> Self {
+        Self {
+            datafile_path: PathBuf::from("todust.sqlite"),
+        }
+    }
+}
 
 impl SqliteStore {
-    pub fn connect_database(self, datafile_path: PathBuf) -> Result<ConnectedSqliteStore, Error> {
+    pub fn with_datafile_path(self, datafile_path: PathBuf) -> Self {
+        Self { datafile_path }
+    }
+
+    pub fn open(self) -> Result<OpenSqliteStore, Error> {
         debug!("connecting to database");
 
         let mut measure = Measure::default();
 
         let db_connection =
-            Connection::open(datafile_path).context("can not open sqlite database file")?;
+            Connection::open(self.datafile_path).context("can not open sqlite database file")?;
 
         trace!("connected to database after {}", measure.duration());
 
@@ -36,15 +49,15 @@ impl SqliteStore {
 
         debug!("done connecting to database after {}", measure.done());
 
-        Ok(ConnectedSqliteStore { db_connection })
+        Ok(OpenSqliteStore { db_connection })
     }
 }
 
-pub struct ConnectedSqliteStore {
+pub struct OpenSqliteStore {
     db_connection: Connection,
 }
 
-impl Store for ConnectedSqliteStore {
+impl Store for OpenSqliteStore {
     fn add_entry(&self, entry: Entry) -> Result<(), Error> {
         debug!("adding entry");
 

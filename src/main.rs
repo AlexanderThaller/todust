@@ -129,7 +129,9 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
-    let store = SqliteStore::default().connect_database(datafile_path)?;
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
 
     let entry = Entry::default()
         .with_text(string_from_editor(None).context("can not get message from editor")?);
@@ -150,7 +152,9 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     let no_done = matches.is_present("no_done");
     let entry_id = matches.value_of("entry_id");
 
-    let store = SqliteStore::default().connect_database(datafile_path)?;
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
 
     if entry_id.is_none() {
         if no_done {
@@ -189,7 +193,9 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
-    let store = SqliteStore::default().connect_database(datafile_path)?;
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
 
     let entries = store
         .get_active_entries()
@@ -220,7 +226,9 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
 
     let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
-    let store = SqliteStore::default().connect_database(datafile_path)?;
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
 
     store.entry_done(entry_id)?;
 
@@ -241,7 +249,9 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = SqliteStore::default().connect_database(datafile_path)?;
+    let store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
     let entries = store
         .get_entries()
         .context("can not get entries from store")?;
@@ -283,7 +293,9 @@ fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
         .into();
 
     let old_store = CsvStore::default().with_datafile_path(from_path);
-    let new_store = SqliteStore::default().connect_database(datafile_path)?;
+    let new_store = SqliteStore::default()
+        .with_datafile_path(datafile_path)
+        .open()?;
 
     let entries = old_store
         .get_entries()
