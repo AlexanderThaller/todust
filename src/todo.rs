@@ -11,8 +11,8 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Entry {
     // FIXME: Rename project_name to project.
-    pub project_name: Option<String>,
     pub started: DateTime<Utc>,
+    pub project_name: Option<String>,
     pub finished: Option<DateTime<Utc>>,
     pub uuid: Uuid,
     pub text: String,

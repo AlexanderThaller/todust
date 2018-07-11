@@ -7,4 +7,4 @@ SELECT
 FROM
   v1_entries
 WHERE
-  project_name IS ?1;
+  project_name LIKE ?1;

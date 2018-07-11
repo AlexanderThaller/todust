@@ -9,4 +9,4 @@ FROM
 WHERE
   finished IS null
 AND
-  project_name IS ?1;
+  project_name LIKE ?1;
