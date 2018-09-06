@@ -4,6 +4,5 @@ imports_indent              =  "Block"
 imports_layout              =  "Vertical"
 normalize_comments          =  true
 reorder_imports             =  true
-report_fixme                =  "Always"
 use_try_shorthand           =  true
 wrap_comments               =  true

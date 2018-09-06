@@ -9,6 +9,7 @@ use rusqlite::{
     Connection,
     Statement,
 };
+use std::fs;
 use std::path::PathBuf;
 use store::Store;
 use todo::{
@@ -38,6 +39,13 @@ impl SqliteStore {
         debug!("connecting to database");
 
         let mut measure = Measure::default();
+
+        fs::create_dir_all(
+            &self
+                .datafile_path
+                .parent()
+                .expect("can not get parent folder of sqlite database"),
+        ).context("can not create folder for sqlite database file")?;
 
         let db_connection =
             Connection::open(&self.datafile_path).context("can not open sqlite database file")?;

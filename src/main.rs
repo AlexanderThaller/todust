@@ -57,12 +57,11 @@ use todo::Entry;
 fn main() {
     if let Err(err) = run() {
         let mut causes = String::new();
-        for cause in err.causes() {
-            causes.push_str(format!(": {}", cause).as_str())
+        for c in err.iter_chain() {
+            causes += &format!(": {}", c);
         }
 
         error!("{}", causes);
-
         trace!("backtrace:\n{}", err.backtrace());
 
         ::std::process::exit(1);
