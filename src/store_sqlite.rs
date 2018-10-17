@@ -131,75 +131,6 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error> {
-        debug!("updating entry");
-
-        let mut measure = Measure::default();
-
-        self.db_connection
-            .execute(
-                include_str!("../resources/sqlite/update_entry.sql"),
-                &[
-                    &new.project_name,
-                    &new.started,
-                    &new.finished,
-                    &new.text,
-                    &old.uuid.to_string(),
-                ],
-            )
-            .context("can not update entry entry")?;
-
-        trace!("ran update_entry query after {}", measure.duration());
-
-        debug!("done updating entry after {}", measure.done());
-
-        Ok(())
-    }
-
-    fn get_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
-        debug!("getting entries");
-
-        let mut measure = Measure::default();
-
-        let stmt = self
-            .db_connection
-            .prepare(include_str!("../resources/sqlite/get_entries.sql"))
-            .context("can not prepare statement to get entries")?;
-
-        trace!("preparted sql after {}", measure.duration());
-
-        let entries = sqlite_statement_to_entries(stmt, project)
-            .context("can not convert sqlite statement to entries")?;
-
-        trace!("collected entries after {}", measure.duration());
-
-        debug!("done getting entries after {}", measure.done());
-
-        Ok(entries)
-    }
-
-    fn get_active_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
-        let mut measure = Measure::default();
-
-        debug!("getting active entries");
-
-        let stmt = self
-            .db_connection
-            .prepare(include_str!("../resources/sqlite/get_active_entries.sql"))
-            .context("can not prepare statement to get entries")?;
-
-        trace!("preparted sql after {}", measure.duration());
-
-        let entries = sqlite_statement_to_entries(stmt, project)
-            .context("can not convert sqlite statement to entries")?;
-
-        trace!("collected active entries after {}", measure.duration());
-
-        debug!("done getting active entries after {}", measure.done());
-
-        Ok(entries)
-    }
-
     fn entry_done(&self, entry_id: usize, project: Option<&str>) -> Result<(), Error> {
         debug!("marking entry as done");
 
@@ -230,6 +161,62 @@ impl Store for OpenSqliteStore {
         debug!("done marking entry as done after {}", measure.done());
 
         Ok(())
+    }
+
+    fn get_active_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
+        let mut measure = Measure::default();
+
+        debug!("getting active entries");
+
+        let stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_active_entries.sql"))
+            .context("can not prepare statement to get entries")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let entries = sqlite_statement_to_entries(stmt, project)
+            .context("can not convert sqlite statement to entries")?;
+
+        trace!("collected active entries after {}", measure.duration());
+
+        debug!("done getting active entries after {}", measure.done());
+
+        Ok(entries)
+    }
+
+    fn get_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+        unimplemented!()
+    }
+
+    fn get_done_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+        unimplemented!()
+    }
+
+    fn get_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
+        debug!("getting entries");
+
+        let mut measure = Measure::default();
+
+        let stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_entries.sql"))
+            .context("can not prepare statement to get entries")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let entries = sqlite_statement_to_entries(stmt, project)
+            .context("can not convert sqlite statement to entries")?;
+
+        trace!("collected entries after {}", measure.duration());
+
+        debug!("done getting entries after {}", measure.done());
+
+        Ok(entries)
     }
 
     fn get_entry_by_id(&self, entry_id: usize, project: Option<&str>) -> Result<Entry, Error> {
@@ -281,6 +268,31 @@ impl Store for OpenSqliteStore {
         debug!("done getting projects after {}", measure.done());
 
         Ok(projects)
+    }
+
+    fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error> {
+        debug!("updating entry");
+
+        let mut measure = Measure::default();
+
+        self.db_connection
+            .execute(
+                include_str!("../resources/sqlite/update_entry.sql"),
+                &[
+                    &new.project_name,
+                    &new.started,
+                    &new.finished,
+                    &new.text,
+                    &old.uuid.to_string(),
+                ],
+            )
+            .context("can not update entry entry")?;
+
+        trace!("ran update_entry query after {}", measure.duration());
+
+        debug!("done updating entry after {}", measure.done());
+
+        Ok(())
     }
 }
 

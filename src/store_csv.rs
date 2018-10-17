@@ -36,7 +36,23 @@ impl Store for CsvStore {
         unimplemented!()
     }
 
-    fn update_entry(&self, _old: &Entry, _new: Entry) -> Result<(), Error> {
+    fn entry_done(&self, _entry_id: usize, _project: Option<&str>) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn get_active_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
+        unimplemented!()
+    }
+
+    fn get_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+        unimplemented!()
+    }
+
+    fn get_done_count(&self, _project: Option<&str>) -> Result<usize, Error> {
         unimplemented!()
     }
 
@@ -53,19 +69,15 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_active_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
-        unimplemented!()
-    }
-
-    fn entry_done(&self, _entry_id: usize, _project: Option<&str>) -> Result<(), Error> {
-        unimplemented!()
-    }
-
     fn get_entry_by_id(&self, _entry_id: usize, _project: Option<&str>) -> Result<Entry, Error> {
         unimplemented!()
     }
 
     fn get_projects(&self) -> Result<Vec<String>, Error> {
+        unimplemented!()
+    }
+
+    fn update_entry(&self, _old: &Entry, _new: Entry) -> Result<(), Error> {
         unimplemented!()
     }
 }
