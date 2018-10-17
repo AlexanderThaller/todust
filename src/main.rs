@@ -342,6 +342,8 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
         .into();
 
+    let print_inactive = matches.is_present("print_inactive");
+
     let store = SqliteStore::default()
         .with_datafile_path(datafile_path)
         .open()?;
@@ -352,13 +354,16 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
 
     let mut projects: Vec<_> = projects
         .iter()
-        .filter(|project| {
-            !store
+        .map(|project| {
+            let active_count = store
                 .get_active_entries(Some(&project))
                 .ok()
                 .unwrap_or_default()
-                .is_empty()
+                .len();
+
+            (project, active_count)
         })
+        .filter(|(_, active_count)| print_inactive || active_count != &0)
         .collect();
 
     projects.sort();
@@ -367,7 +372,7 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
         "{}",
         projects
             .iter()
-            .map(|string| string.as_str())
+            .map(|(project, active_count)| format!("{}\t{}", project, active_count))
             .collect::<Vec<_>>()
             .join("\n")
     );
