@@ -220,8 +220,8 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_titles(row!["ID", "Age", "Description"]);
 
-    table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
     for (index, entry) in entries.into_iter().enumerate() {
         table.add_row(row![
             index + 1,
@@ -368,14 +368,23 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
 
     projects.sort();
 
-    println!(
-        "{}",
-        projects
-            .iter()
-            .map(|(project, active_count)| format!("{}\t{}", project, active_count))
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_titles(row![
+        "Project",
+        "Active Todos",
+        "Finished Todos",
+        "Total Todos"
+    ]);
+
+    for entry in projects {
+        let project = entry.0;
+        let active_count = entry.1;
+
+        table.add_row(row![project, active_count]);
+    }
+
+    table.printstd();
 
     Ok(())
 }
