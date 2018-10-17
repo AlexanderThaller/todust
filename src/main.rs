@@ -243,7 +243,8 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
 
     let project = matches.value_of("project");
 
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+    let entry_id =
+        value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
     let store = SqliteStore::default()
         .with_datafile_path(datafile_path)
@@ -262,7 +263,8 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
 
     let project = matches.value_of("project");
 
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+    let entry_id =
+        value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
     let update_time = matches.is_present("update_time");
 
@@ -344,13 +346,31 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
         .with_datafile_path(datafile_path)
         .open()?;
 
-    let mut projects = store
+    let projects = store
         .get_projects()
         .context("can not get projects from store")?;
 
+    let mut projects: Vec<_> = projects
+        .iter()
+        .filter(|project| {
+            !store
+                .get_active_entries(Some(&project))
+                .ok()
+                .unwrap_or_default()
+                .is_empty()
+        })
+        .collect();
+
     projects.sort();
 
-    println!("{}", projects.join("\n"));
+    println!(
+        "{}",
+        projects
+            .iter()
+            .map(|string| string.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
 
     Ok(())
 }
@@ -363,7 +383,8 @@ fn run_move(matches: &ArgMatches) -> Result<(), Error> {
 
     let project = matches.value_of("project");
 
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+    let entry_id =
+        value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
 
     let target_project = matches.value_of("target_project").map(str::to_string);
 

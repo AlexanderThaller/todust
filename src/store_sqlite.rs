@@ -45,7 +45,8 @@ impl SqliteStore {
                 .datafile_path
                 .parent()
                 .expect("can not get parent folder of sqlite database"),
-        ).context("can not create folder for sqlite database file")?;
+        )
+        .context("can not create folder for sqlite database file")?;
 
         let db_connection =
             Connection::open(&self.datafile_path).context("can not open sqlite database file")?;
@@ -287,8 +288,8 @@ fn sqlite_statement_to_entries(
     mut stmt: Statement<'_>,
     project: Option<&str>,
 ) -> Result<Entries, Error> {
-    let entries =
-        stmt.query_map(&[&project], |row| {
+    let entries = stmt
+        .query_map(&[&project], |row| {
             let uuid_raw: String = row.get(3);
             let uuid = match Uuid::parse_str(&uuid_raw).context("can not parse uuid from row") {
                 Ok(uuid) => uuid,
@@ -305,16 +306,17 @@ fn sqlite_statement_to_entries(
                 uuid,
                 text: row.get(4),
             })
-        }).context("can not convert rows to entries")?
-            .filter_map(|entry| match entry {
-                Ok(entry) => Some(entry),
-                Err(err) => {
-                    warn!("problem while getting row from sqlite: {}", err);
-                    None
-                }
-            })
-            .filter_map(|entry| entry)
-            .collect();
+        })
+        .context("can not convert rows to entries")?
+        .filter_map(|entry| match entry {
+            Ok(entry) => Some(entry),
+            Err(err) => {
+                warn!("problem while getting row from sqlite: {}", err);
+                None
+            }
+        })
+        .filter_map(|entry| entry)
+        .collect();
 
     Ok(entries)
 }
