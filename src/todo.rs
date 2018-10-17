@@ -81,7 +81,7 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Entries {
     entries: BTreeSet<Entry>,
 }
@@ -114,6 +114,10 @@ impl Entries {
 
         Ok(entry)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 impl fmt::Display for Entries {
@@ -145,7 +149,8 @@ impl fmt::Display for Entries {
         tera.add_raw_template(
             "entries.asciidoc",
             include_str!("../resources/templates/entries.asciidoc"),
-        ).expect("can not compile entries.asciidoc template");
+        )
+        .expect("can not compile entries.asciidoc template");
         tera.register_filter("single_line", single_line);
         tera.register_filter("lines", lines);
 

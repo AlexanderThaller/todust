@@ -116,3 +116,8 @@ subcommands:
   # FIXME: Disable project flag in this subcommand as it doesnt make sense here.
   - projects:
       about: 'Print all projects saved in todust'
+      args:
+        - print_inactive:
+            help: 'also print out projects without active todos. if not specified inactive projects will not be listed.'
+            long: 'print_inactive'
+            short: 'i'
