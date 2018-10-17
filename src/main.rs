@@ -356,32 +356,35 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
         .iter()
         .map(|project| {
             let active_count = store
-                .get_active_entries(Some(&project))
+                .get_active_count(Some(&project))
                 .ok()
-                .unwrap_or_default()
-                .len();
+                .unwrap_or_default();
 
-            (project, active_count)
+            let done_count = store
+                .get_done_count(Some(&project))
+                .ok()
+                .unwrap_or_default();
+
+            let count = store.get_count(Some(&project)).ok().unwrap_or_default();
+
+            (project, active_count, done_count, count)
         })
-        .filter(|(_, active_count)| print_inactive || active_count != &0)
+        .filter(|(_, active_count, ..)| print_inactive || active_count != &0)
         .collect();
 
     projects.sort();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row![
-        "Project",
-        "Active Todos",
-        "Finished Todos",
-        "Total Todos"
-    ]);
+    table.set_titles(row!["Project", "Active", "Done", "Total"]);
 
     for entry in projects {
         let project = entry.0;
         let active_count = entry.1;
+        let done_count = entry.2;
+        let count = entry.3;
 
-        table.add_row(row![project, active_count]);
+        table.add_row(row![project, active_count, done_count, count]);
     }
 
     table.printstd();

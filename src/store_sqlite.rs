@@ -163,8 +163,27 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn get_active_count(&self, _project: Option<&str>) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_active_count(&self, project: Option<&str>) -> Result<usize, Error> {
+        let mut measure = Measure::default();
+
+        debug!("getting count of active entries");
+
+        let mut stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_active_count.sql"))
+            .context("can not prepare statement to get active entries count")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let count: isize = stmt
+            .query_row(&[&project], |r| r.get(0))
+            .context("can not run query to get active entries count")?;
+
+        trace!("collected active entries after {}", measure.duration());
+
+        debug!("done getting active entries after {}", measure.done());
+
+        Ok(count as usize)
     }
 
     fn get_active_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
@@ -189,12 +208,50 @@ impl Store for OpenSqliteStore {
         Ok(entries)
     }
 
-    fn get_count(&self, _project: Option<&str>) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_count(&self, project: Option<&str>) -> Result<usize, Error> {
+        let mut measure = Measure::default();
+
+        debug!("getting count of entries");
+
+        let mut stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_count.sql"))
+            .context("can not prepare statement to get entries count")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let count: isize = stmt
+            .query_row(&[&project], |r| r.get(0))
+            .context("can not run query to get entries count")?;
+
+        trace!("collected entries count after {}", measure.duration());
+
+        debug!("done getting entries count after {}", measure.done());
+
+        Ok(count as usize)
     }
 
-    fn get_done_count(&self, _project: Option<&str>) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_done_count(&self, project: Option<&str>) -> Result<usize, Error> {
+        let mut measure = Measure::default();
+
+        debug!("getting count of done entries");
+
+        let mut stmt = self
+            .db_connection
+            .prepare(include_str!("../resources/sqlite/get_done_count.sql"))
+            .context("can not prepare statement to get entries done count")?;
+
+        trace!("preparted sql after {}", measure.duration());
+
+        let count: isize = stmt
+            .query_row(&[&project], |r| r.get(0))
+            .context("can not run query to get entries done count")?;
+
+        trace!("collected entries done count after {}", measure.duration());
+
+        debug!("done getting entries done count after {}", measure.done());
+
+        Ok(count as usize)
     }
 
     fn get_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
