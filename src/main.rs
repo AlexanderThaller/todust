@@ -220,7 +220,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row!["ID", "Age", "Description"]);
+    table.set_titles(row![b->"ID", b->"Age", b->"Description"]);
 
     for (index, entry) in entries.into_iter().enumerate() {
         table.add_row(row![
@@ -376,7 +376,7 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row!["Project", "Active", "Done", "Total"]);
+    table.set_titles(row![b->"Project", b->"Active", b->"Done", b->"Total"]);
 
     for entry in projects {
         let project = entry.0;
@@ -386,6 +386,12 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
 
         table.add_row(row![project, active_count, done_count, count]);
     }
+
+    let active_count = store.get_active_count(Some("%")).ok().unwrap_or_default();
+    let done_count = store.get_done_count(Some("%")).ok().unwrap_or_default();
+    let count = store.get_count(Some("%")).ok().unwrap_or_default();
+    table.add_row(row!["", "------", "----", "-----"]);
+    table.add_row(row!["", b->active_count, b->done_count, b->count]);
 
     table.printstd();
 
