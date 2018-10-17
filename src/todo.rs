@@ -139,10 +139,10 @@ impl fmt::Display for Entries {
         }
 
         let mut context = Context::new();
-        context.add("active", &active);
+        context.insert("active", &active);
 
         if !done.is_empty() {
-            context.add("done", &done);
+            context.insert("done", &done);
         }
 
         let mut tera = Tera::default();
