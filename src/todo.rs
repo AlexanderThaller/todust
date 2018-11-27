@@ -3,6 +3,7 @@ use chrono::{
     Utc,
 };
 use failure::Error;
+use helper;
 use serde_json::value::{
     to_value,
     Value,
@@ -153,6 +154,7 @@ impl fmt::Display for Entries {
         .expect("can not compile entries.asciidoc template");
         tera.register_filter("single_line", single_line);
         tera.register_filter("lines", lines);
+        tera.register_filter("format_duration_since", format_duration_since);
 
         let rendered = tera
             .render("entries.asciidoc", &context)
@@ -188,6 +190,7 @@ impl<'a> IntoIterator for &'a Entries {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     let s = try_get_value!("single_line", "value", String, value);
 
@@ -196,6 +199,7 @@ fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     Ok(to_value(&s).unwrap())
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     let mut out = String::new();
 
@@ -216,4 +220,12 @@ fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     }
 
     Ok(to_value(&out).unwrap())
+}
+
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
+fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let started = try_get_value!("format_duration_since", "value", DateTime<Utc>, value);
+    let duration = Utc::now().signed_duration_since(started);
+
+    Ok(to_value(&helper::format_duration(duration)).unwrap())
 }

@@ -23,6 +23,7 @@
 Project:: {{ entry.project_name }}
 UUID:: {{ entry.uuid }}
 Started:: {{ entry.started }}
+Active Duration:: {{ entry.started | format_duration_since }}
 
 ====
 {{ entry.text | lines | trim }}
