@@ -3,7 +3,7 @@ mod helper;
 mod measure;
 mod opt;
 mod store;
-mod store_csv;
+mod store_csv2;
 mod store_sqlite;
 mod todo;
 
@@ -23,7 +23,7 @@ use crate::{
         SubCommand,
     },
     store::Store,
-    store_csv::CsvStore,
+    store_csv2::CsvStore as CsvStore2,
     store_sqlite::SqliteStore,
     todo::Entry,
 };
@@ -98,9 +98,7 @@ fn run() -> Result<(), Error> {
 }
 
 fn run_add(opt: &Opt) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let entry = Entry::default()
         .with_text(string_from_editor(None).context("can not get message from editor")?)
@@ -114,9 +112,7 @@ fn run_add(opt: &Opt) -> Result<(), Error> {
 }
 
 fn run_done(opt: &Opt, sub_opt: &DoneSubCommandOpts) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     store.entry_done(sub_opt.entry_id, &opt.project)?;
 
@@ -128,9 +124,7 @@ fn run_edit(opt: &Opt, sub_opt: &EditSubCommandOpts) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let old_entry = store
         .get_entry_by_id(sub_opt.entry_id, &opt.project)
@@ -162,9 +156,7 @@ editor",
 }
 
 fn run_list(opt: &Opt) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let entries = store
         .get_active_entries(&opt.project)
@@ -188,10 +180,11 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
 }
 
 fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> {
-    let old_store = CsvStore::default().with_datafile_path(sub_opt.from_path.clone());
-    let new_store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
+    let old_store = SqliteStore::default()
+        .with_datafile_path(sub_opt.from_path.clone())
         .open()?;
+
+    let new_store = CsvStore2::open(&opt.datadir);
 
     let entries = old_store
         .get_entries(&opt.project)
@@ -209,9 +202,7 @@ fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> 
 }
 
 fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let old_entry = store
         .get_entry_by_id(sub_opt.entry_id, &opt.project)
@@ -230,9 +221,7 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let project = opt.project.clone();
 
@@ -265,9 +254,7 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = SqliteStore::default()
-        .with_datafile_path(opt.datafile_path.clone())
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let projects = store
         .get_projects()
