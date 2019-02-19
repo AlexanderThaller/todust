@@ -1,20 +1,30 @@
+use crate::{
+    helper::confirm,
+    measure::Measure,
+    store::Store,
+    todo::{
+        Entries,
+        Entry,
+    },
+};
 use chrono::Utc;
 use failure::{
+    bail,
     Error,
     ResultExt,
 };
-use helper::confirm;
-use measure::Measure;
+use log::{
+    debug,
+    trace,
+    warn,
+};
 use rusqlite::{
     Connection,
     Statement,
 };
-use std::fs;
-use std::path::PathBuf;
-use store::Store;
-use todo::{
-    Entries,
-    Entry,
+use std::{
+    fs,
+    path::PathBuf,
 };
 use uuid::Uuid;
 

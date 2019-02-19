@@ -1,31 +1,3 @@
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate log;
-extern crate simplelog;
-extern crate time;
-
-extern crate chrono;
-extern crate uuid;
-
-extern crate csv;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate rusqlite;
-extern crate serde_json;
-
-#[macro_use]
-extern crate prettytable;
-#[macro_use]
-extern crate text_io;
-#[macro_use]
-extern crate tera;
-
-extern crate tempfile;
-
 mod helper;
 mod measure;
 mod store;
@@ -33,26 +5,43 @@ mod store_csv;
 mod store_sqlite;
 mod todo;
 
+use crate::{
+    helper::{
+        format_duration,
+        string_from_editor,
+    },
+    store::Store,
+    store_csv::CsvStore,
+    store_sqlite::SqliteStore,
+    todo::Entry,
+};
 use chrono::Utc;
-use clap::ArgMatches;
+use clap::{
+    crate_authors,
+    crate_description,
+    crate_name,
+    crate_version,
+    load_yaml,
+    value_t,
+    ArgMatches,
+};
 use failure::{
+    bail,
     Context,
     Error,
     ResultExt,
 };
-use helper::{
-    format_duration,
-    string_from_editor,
+use log::{
+    error,
+    trace,
 };
 use prettytable::{
+    cell,
     format,
+    row,
     Table,
 };
 use std::path::PathBuf;
-use store::Store;
-use store_csv::CsvStore;
-use store_sqlite::SqliteStore;
-use todo::Entry;
 
 fn main() {
     if let Err(err) = run() {
@@ -135,7 +124,7 @@ fn run() -> Result<(), Error> {
     }
 }
 
-fn run_add(matches: &ArgMatches) -> Result<(), Error> {
+fn run_add(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -156,7 +145,7 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_print(matches: &ArgMatches) -> Result<(), Error> {
+fn run_print(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -202,7 +191,7 @@ fn run_print(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_list(matches: &ArgMatches) -> Result<(), Error> {
+fn run_list(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -235,7 +224,7 @@ fn run_list(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_done(matches: &ArgMatches) -> Result<(), Error> {
+fn run_done(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -255,7 +244,7 @@ fn run_done(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
+fn run_edit(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -303,7 +292,7 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
+fn run_migrate(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -336,7 +325,7 @@ fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
+fn run_projects(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?
@@ -398,7 +387,7 @@ fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_move(matches: &ArgMatches) -> Result<(), Error> {
+fn run_move(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let datafile_path: PathBuf = matches
         .value_of("datafile_path")
         .ok_or_else(|| Context::new("can not get datafile_path from args"))?

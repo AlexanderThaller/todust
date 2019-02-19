@@ -1,23 +1,33 @@
+use crate::helper;
 use chrono::{
     DateTime,
     Utc,
 };
-use failure::Error;
-use helper;
+use failure::{
+    bail,
+    Error,
+};
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::value::{
     to_value,
     Value,
 };
-use std::collections::HashMap;
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
+use std::{
+    collections::{
+        BTreeMap,
+        BTreeSet,
+        HashMap,
+    },
+    fmt,
+    iter::FromIterator,
 };
-use std::fmt;
-use std::iter::FromIterator;
-use tera::Result as TeraResult;
 use tera::{
+    try_get_value,
     Context,
+    Result as TeraResult,
     Tera,
 };
 use uuid::Uuid;
@@ -70,7 +80,7 @@ impl Entry {
 }
 
 impl fmt::Display for Entry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let line = self
             .text
             .replace("\n", " ")
@@ -122,7 +132,7 @@ impl Entries {
 }
 
 impl fmt::Display for Entries {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut active: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
         let mut done: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
 

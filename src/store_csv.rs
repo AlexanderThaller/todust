@@ -1,3 +1,10 @@
+use crate::{
+    store::Store,
+    todo::{
+        Entries,
+        Entry,
+    },
+};
 use csv::{
     Error as CsvError,
     ReaderBuilder,
@@ -7,11 +14,6 @@ use failure::{
     ResultExt,
 };
 use std::path::PathBuf;
-use store::Store;
-use todo::{
-    Entries,
-    Entry,
-};
 
 pub struct CsvStore {
     datafile_path: PathBuf,

@@ -1,10 +1,16 @@
 use chrono::Duration;
 use failure::{
+    bail,
     Error,
     ResultExt,
 };
 use std::fs::File;
 use tempfile::tempdir;
+use text_io::{
+    read,
+    try_read,
+    try_scan,
+};
 
 pub fn confirm(message: &str, default: bool) -> Result<bool, Error> {
     let default_text = if default { "Y/n" } else { "N/y" };
@@ -20,12 +26,14 @@ pub fn confirm(message: &str, default: bool) -> Result<bool, Error> {
 }
 
 pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
-    use std::env;
-    use std::io::{
-        Read,
-        Write,
+    use std::{
+        env,
+        io::{
+            Read,
+            Write,
+        },
+        process::Command,
     };
-    use std::process::Command;
 
     let tmpdir = tempdir().context("can not create tempdir")?;
     let tmppath = tmpdir.path().join("todo.asciidoc");
