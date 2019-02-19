@@ -36,7 +36,7 @@ use uuid::Uuid;
 pub struct Entry {
     // FIXME: Rename project_name to project.
     pub started: DateTime<Utc>,
-    pub project_name: Option<String>,
+    pub project_name: String,
     pub finished: Option<DateTime<Utc>>,
     pub uuid: Uuid,
     pub text: String,
@@ -45,7 +45,7 @@ pub struct Entry {
 impl Default for Entry {
     fn default() -> Self {
         Self {
-            project_name: None,
+            project_name: "default".to_owned(),
             started: Utc::now(),
             finished: None,
             uuid: Uuid::new_v4(),
@@ -55,7 +55,7 @@ impl Default for Entry {
 }
 
 impl Entry {
-    pub fn with_project(self, project_name: Option<String>) -> Self {
+    pub fn with_project(self, project_name: String) -> Self {
         Self {
             project_name,
             ..self
@@ -139,11 +139,11 @@ impl fmt::Display for Entries {
         for entry in &self.entries {
             if entry.finished.is_none() {
                 active
-                    .entry(entry.project_name.as_ref().unwrap())
+                    .entry(&entry.project_name)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             } else {
-                done.entry(entry.project_name.as_ref().unwrap())
+                done.entry(&entry.project_name)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             }

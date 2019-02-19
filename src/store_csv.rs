@@ -38,27 +38,27 @@ impl Store for CsvStore {
         unimplemented!()
     }
 
-    fn entry_done(&self, _entry_id: usize, _project: Option<&str>) -> Result<(), Error> {
+    fn entry_done(&self, _entry_id: usize, _project: &str) -> Result<(), Error> {
         unimplemented!()
     }
 
-    fn get_active_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+    fn get_active_count(&self, _project: &str) -> Result<usize, Error> {
         unimplemented!()
     }
 
-    fn get_active_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
+    fn get_active_entries(&self, _project: &str) -> Result<Entries, Error> {
         unimplemented!()
     }
 
-    fn get_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+    fn get_count(&self, _project: &str) -> Result<usize, Error> {
         unimplemented!()
     }
 
-    fn get_done_count(&self, _project: Option<&str>) -> Result<usize, Error> {
+    fn get_done_count(&self, _project: &str) -> Result<usize, Error> {
         unimplemented!()
     }
 
-    fn get_entries(&self, _project: Option<&str>) -> Result<Entries, Error> {
+    fn get_entries(&self, _project: &str) -> Result<Entries, Error> {
         let mut rdr = ReaderBuilder::new()
             .from_path(&self.datafile_path)
             .context("can not create entry reader")?;
@@ -71,7 +71,7 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_entry_by_id(&self, _entry_id: usize, _project: Option<&str>) -> Result<Entry, Error> {
+    fn get_entry_by_id(&self, _entry_id: usize, _project: &str) -> Result<Entry, Error> {
         unimplemented!()
     }
 

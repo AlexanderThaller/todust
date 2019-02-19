@@ -141,7 +141,7 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn entry_done(&self, entry_id: usize, project: Option<&str>) -> Result<(), Error> {
+    fn entry_done(&self, entry_id: usize, project: &str) -> Result<(), Error> {
         debug!("marking entry as done");
 
         let mut measure = Measure::default();
@@ -173,7 +173,7 @@ impl Store for OpenSqliteStore {
         Ok(())
     }
 
-    fn get_active_count(&self, project: Option<&str>) -> Result<usize, Error> {
+    fn get_active_count(&self, project: &str) -> Result<usize, Error> {
         let mut measure = Measure::default();
 
         debug!("getting count of active entries");
@@ -196,7 +196,7 @@ impl Store for OpenSqliteStore {
         Ok(count as usize)
     }
 
-    fn get_active_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
+    fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
         let mut measure = Measure::default();
 
         debug!("getting active entries");
@@ -218,7 +218,7 @@ impl Store for OpenSqliteStore {
         Ok(entries)
     }
 
-    fn get_count(&self, project: Option<&str>) -> Result<usize, Error> {
+    fn get_count(&self, project: &str) -> Result<usize, Error> {
         let mut measure = Measure::default();
 
         debug!("getting count of entries");
@@ -241,7 +241,7 @@ impl Store for OpenSqliteStore {
         Ok(count as usize)
     }
 
-    fn get_done_count(&self, project: Option<&str>) -> Result<usize, Error> {
+    fn get_done_count(&self, project: &str) -> Result<usize, Error> {
         let mut measure = Measure::default();
 
         debug!("getting count of done entries");
@@ -264,7 +264,7 @@ impl Store for OpenSqliteStore {
         Ok(count as usize)
     }
 
-    fn get_entries(&self, project: Option<&str>) -> Result<Entries, Error> {
+    fn get_entries(&self, project: &str) -> Result<Entries, Error> {
         debug!("getting entries");
 
         let mut measure = Measure::default();
@@ -286,7 +286,7 @@ impl Store for OpenSqliteStore {
         Ok(entries)
     }
 
-    fn get_entry_by_id(&self, entry_id: usize, project: Option<&str>) -> Result<Entry, Error> {
+    fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
         // FIXME: Make this a sqlite query
         debug!("getting entry by id");
 
@@ -363,10 +363,7 @@ impl Store for OpenSqliteStore {
     }
 }
 
-fn sqlite_statement_to_entries(
-    mut stmt: Statement<'_>,
-    project: Option<&str>,
-) -> Result<Entries, Error> {
+fn sqlite_statement_to_entries(mut stmt: Statement<'_>, project: &str) -> Result<Entries, Error> {
     let entries = stmt
         .query_map(&[&project], |row| {
             let uuid_raw: String = row.get(3);
