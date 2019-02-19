@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 csv = "1"
 failure = "0.1"
+lazy_static = "1.2.0"
 log = "0.4"
 prettytable-rs = "0.8"
 serde = "1"
@@ -20,15 +21,10 @@ tera = "0.11"
 text_io = "0.1"
 time = "0.1"
 xdg = "2"
-lazy_static = "1.2.0"
 
 [dependencies.chrono]
 features = ["serde"]
 version = "0.4"
-
-[dependencies.clap]
-features = ["yaml"]
-version = "2"
 
 [dependencies.uuid]
 features = ["serde", "v4"]
