@@ -1,10 +1,4 @@
-use crate::{
-    entry_v2::{
-        Entry as EntryV2,
-        Metadata as MetadataV2,
-    },
-    helper,
-};
+use crate::helper;
 use chrono::{
     DateTime,
     Utc,
@@ -39,63 +33,50 @@ use tera::{
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
-pub struct Entry {
-    // FIXME: Rename project_name to project.
+pub struct Metadata {
     pub started: DateTime<Utc>,
-    pub project_name: String,
+    pub project: String,
     pub finished: Option<DateTime<Utc>>,
     pub uuid: Uuid,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self {
+            project: "default".to_owned(),
+            started: Utc::now(),
+            finished: None,
+            uuid: Uuid::new_v4(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
+pub struct Entry {
+    pub metadata: Metadata,
     pub text: String,
 }
 
 impl Default for Entry {
     fn default() -> Self {
         Self {
-            project_name: "default".to_owned(),
-            started: Utc::now(),
-            finished: None,
-            uuid: Uuid::new_v4(),
+            metadata: Metadata::default(),
             text: String::new(),
         }
     }
 }
 
 impl Entry {
-    pub fn with_project(self, project_name: String) -> Self {
-        Self {
-            project_name,
-            ..self
-        }
-    }
-
-    pub fn with_text(self, text: String) -> Self {
-        Self { text, ..self }
-    }
-
     pub fn is_active(&self) -> bool {
-        self.finished.is_none()
+        self.metadata.finished.is_none()
     }
 
     pub fn age(&self) -> ::chrono::Duration {
-        Utc::now().signed_duration_since(self.started)
+        Utc::now().signed_duration_since(self.metadata.started)
     }
 
     pub fn to_string(&self) -> String {
-        format!("{}\n{}", self.started, self.text)
-    }
-}
-
-impl Into<EntryV2> for Entry {
-    fn into(self) -> EntryV2 {
-        EntryV2 {
-            text: self.text,
-            metadata: MetadataV2 {
-                started: self.started,
-                finished: self.finished,
-                project: self.project_name,
-                uuid: self.uuid,
-            },
-        }
+        format!("{}\n{}", self.metadata.started, self.text)
     }
 }
 
@@ -157,13 +138,13 @@ impl fmt::Display for Entries {
         let mut done: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
 
         for entry in &self.entries {
-            if entry.finished.is_none() {
+            if entry.metadata.finished.is_none() {
                 active
-                    .entry(&entry.project_name)
+                    .entry(&entry.metadata.project)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             } else {
-                done.entry(&entry.project_name)
+                done.entry(&entry.metadata.project)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             }

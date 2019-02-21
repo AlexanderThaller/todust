@@ -1,9 +1,9 @@
 use crate::{
-    entry::{
+    entry_v2::{
         Entries,
         Entry,
     },
-    store::Store,
+    store_v2::Store,
 };
 use failure::{
     Error,
@@ -31,7 +31,7 @@ impl CsvStore {
     }
 
     fn get_entry_foldername(&self, entry: &Entry) -> PathBuf {
-        let uuid = entry.uuid.to_string();
+        let uuid = entry.metadata.uuid.to_string();
         debug!("uuid: {}", uuid);
 
         // Gets the first two characters of the uuid. This should never fail so the
@@ -55,9 +55,25 @@ impl CsvStore {
 
         let mut entry_file = PathBuf::new();
         entry_file.push(entry_folder);
-        entry_file.push(format!("{}.adoc", entry.uuid));
+        entry_file.push(format!("{}.adoc", entry.metadata.uuid));
 
         entry_file
+    }
+
+    fn get_active_index_filename(&self) -> PathBuf {
+        let mut index_file = PathBuf::new();
+        index_file.push(&self.datadir);
+        index_file.push("active.csv");
+
+        index_file
+    }
+
+    fn get_done_index_filename(&self) -> PathBuf {
+        let mut index_file = PathBuf::new();
+        index_file.push(&self.datadir);
+        index_file.push("done.csv");
+
+        index_file
     }
 }
 

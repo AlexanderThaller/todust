@@ -1,14 +1,19 @@
 #![allow(dead_code)]
 mod entry;
+mod entry_v2;
 mod helper;
 mod measure;
 mod opt;
 mod store;
 mod store_csv2;
 mod store_sqlite;
+mod store_v2;
 
 use crate::{
-    entry::Entry,
+    entry_v2::{
+        Entry,
+        Metadata,
+    },
     helper::{
         format_duration,
         string_from_editor,
@@ -26,6 +31,7 @@ use crate::{
     store::Store,
     store_csv2::CsvStore as CsvStore2,
     store_sqlite::SqliteStore,
+    store_v2::Store as StoreV2,
 };
 use chrono::Utc;
 use failure::{
@@ -100,9 +106,15 @@ fn run() -> Result<(), Error> {
 fn run_add(opt: &Opt) -> Result<(), Error> {
     let store = CsvStore2::open(&opt.datadir);
 
-    let entry = Entry::default()
-        .with_text(string_from_editor(None).context("can not get message from editor")?)
-        .with_project(opt.project.clone());
+    let text = string_from_editor(None).context("can not get message from editor")?;
+
+    let entry = Entry {
+        text,
+        metadata: Metadata {
+            project: opt.project.clone(),
+            ..Metadata::default()
+        },
+    };
 
     store
         .add_entry(entry)
@@ -138,8 +150,10 @@ editor",
     let new_entry = if sub_opt.update_time {
         Entry {
             text: new_text,
-            started: Utc::now(),
-            ..old_entry.clone()
+            metadata: Metadata {
+                started: Utc::now(),
+                ..old_entry.metadata.clone()
+            },
         }
     } else {
         Entry {
@@ -194,7 +208,7 @@ fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> 
         trace!("entry: {:#?}", entry);
 
         new_store
-            .add_entry(entry)
+            .add_entry(entry.into())
             .context("can not add entry to new store")?;
     }
 
@@ -209,8 +223,11 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
         .context("can not get entry")?;
 
     let new_entry = Entry {
-        project_name: sub_opt.target_project.clone(),
-        ..old_entry.clone()
+        text: old_entry.text.clone(),
+        metadata: Metadata {
+            project: sub_opt.target_project.clone(),
+            ..old_entry.metadata.clone()
+        },
     };
 
     store
