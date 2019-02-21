@@ -95,7 +95,7 @@ impl fmt::Display for Entry {
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Entries {
-    entries: BTreeSet<Entry>,
+    pub entries: BTreeSet<Entry>,
 }
 
 impl Entries {
