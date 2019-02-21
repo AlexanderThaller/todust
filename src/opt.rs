@@ -7,12 +7,10 @@ use structopt::{
 };
 
 lazy_static! {
-    static ref DEFAULT_DATAFILE_PATH: PathBuf = xdg::BaseDirectories::with_prefix("todust")
+    static ref DEFAULT_DATADIR: PathBuf = xdg::BaseDirectories::with_prefix("todust")
         .expect("can not read xdg base directories")
-        .get_data_home()
-        .as_path()
-        .join("data.sqlite");
-    static ref DEFAULT_DATAFILE_PATH_STRING: &'static str = DEFAULT_DATAFILE_PATH
+        .get_data_home();
+    static ref DEFAULT_DATADIR_STRING: &'static str = DEFAULT_DATADIR
         .to_str()
         .expect("can not convert xdg data home to string");
 }
@@ -39,13 +37,13 @@ pub struct Opt {
     /// Path to the datadir
     #[structopt(
         short = "D",
-        long = "datafile_path",
+        long = "datadir",
         raw(global = "true"),
         value_name = "path",
-        raw(default_value = "&DEFAULT_DATAFILE_PATH_STRING"),
-        env = "datafile_path"
+        raw(default_value = "&DEFAULT_DATADIR_STRING"),
+        env = "TODUST_DATADIR"
     )]
-    pub datafile_path: PathBuf,
+    pub datadir: PathBuf,
 
     /// Which project to save the entry under
     #[structopt(
@@ -96,7 +94,7 @@ pub enum SubCommand {
 
     // FIXME: Disable project flag in this subcommand as it doesnt make sense here.
     /// Print all projects saved in todust
-    #[structopt(name = "move")]
+    #[structopt(name = "projects")]
     Projects(ProjectsSubCommandOpts),
 }
 
@@ -148,7 +146,7 @@ pub struct MoveSubCommandOpts {
     pub entry_id: usize,
 
     /// Target project name
-    #[structopt(index = 2, value_name = "project_name")]
+    #[structopt(index = 2, value_name = "project")]
     pub target_project: String,
 }
 

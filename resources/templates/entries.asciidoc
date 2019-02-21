@@ -20,10 +20,10 @@
 === {{ project }}
 {% for entry in entries -%}
 ==== {{ entry.text | single_line | truncate(length=100) }}
-Project:: {{ entry.project_name }}
-UUID:: {{ entry.uuid }}
-Started:: {{ entry.started }}
-Active Duration:: {{ entry.started | format_duration_since }}
+Project:: {{ entry.metadata.project }}
+UUID:: {{ entry.metadata.uuid }}
+Started:: {{ entry.metadata.started }}
+Active Duration:: {{ entry.metadata.started | format_duration_since }}
 
 ====
 {{ entry.text | lines | trim }}
@@ -39,9 +39,9 @@ Active Duration:: {{ entry.started | format_duration_since }}
 === {{ project }}
 {% for entry in entries -%}
 ==== {{ entry.text | single_line | truncate(length=100) }}
-Project:: {{ entry.project_name }}
-UUID:: {{ entry.uuid }}
-Started:: {{ entry.started }}
+Project:: {{ entry.metadata.project }}
+UUID:: {{ entry.metadata.uuid }}
+Started:: {{ entry.metadata.started }}
 
 ====
 {{ entry.text | lines | trim }}
