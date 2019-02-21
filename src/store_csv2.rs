@@ -11,7 +11,10 @@ use failure::{
 };
 use log::debug;
 use std::{
-    fs,
+    fs::{
+        self,
+        OpenOptions,
+    },
     io::Write,
     path::{
         Path,
@@ -75,10 +78,8 @@ impl CsvStore {
 
         index_file
     }
-}
 
-impl Store for CsvStore {
-    fn add_entry(&self, entry: Entry) -> Result<(), Error> {
+    fn write_entry_text(&self, entry: &Entry) -> Result<(), Error> {
         let entry_folder = self.get_entry_foldername(&entry);
         fs::create_dir_all(&entry_folder).context("can not create entry folder")?;
 
@@ -87,6 +88,52 @@ impl Store for CsvStore {
         let mut file = fs::File::create(entry_file).context("can not create entry file")?;
         file.write(entry.text.as_bytes())
             .context("can not write entry text to file")?;
+
+        Ok(())
+    }
+
+    fn add_entry_to_index(&self, index_path: PathBuf, entry: &Entry) -> Result<(), Error> {
+        let mut builder = csv::WriterBuilder::new();
+        // We only want to write the header if the file does not exist yet so we can
+        // just append new entries to the existing file without having multiple
+        // headers.
+        builder.has_headers(!index_path.exists());
+
+        let index_file = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&index_path)
+            .context("can not open index_file")?;
+
+        let mut writer = builder.from_writer(index_file);
+
+        writer
+            .serialize(&entry.metadata)
+            .context("can not serialize entry to csv")?;
+
+        Ok(())
+    }
+
+    fn add_entry_to_active_index(&self, entry: &Entry) -> Result<(), Error> {
+        let index_path = self.get_active_index_filename();
+        self.add_entry_to_index(index_path, entry)
+    }
+
+    fn add_entry_to_done_index(&self, entry: &Entry) -> Result<(), Error> {
+        let index_path = self.get_done_index_filename();
+        self.add_entry_to_index(index_path, entry)
+    }
+}
+
+impl Store for CsvStore {
+    fn add_entry(&self, entry: Entry) -> Result<(), Error> {
+        self.write_entry_text(&entry)?;
+
+        if entry.metadata.finished.is_none() {
+            self.add_entry_to_active_index(&entry)?;
+        } else {
+            self.add_entry_to_done_index(&entry)?;
+        }
 
         Ok(())
     }
