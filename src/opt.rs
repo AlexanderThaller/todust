@@ -94,7 +94,7 @@ pub enum SubCommand {
 
     // FIXME: Disable project flag in this subcommand as it doesnt make sense here.
     /// Print all projects saved in todust
-    #[structopt(name = "move")]
+    #[structopt(name = "projects")]
     Projects(ProjectsSubCommandOpts),
 }
 
@@ -146,7 +146,7 @@ pub struct MoveSubCommandOpts {
     pub entry_id: usize,
 
     /// Target project name
-    #[structopt(index = 2, value_name = "project_name")]
+    #[structopt(index = 2, value_name = "project")]
     pub target_project: String,
 }
 

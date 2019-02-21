@@ -125,7 +125,6 @@ fn run_add(opt: &Opt) -> Result<(), Error> {
 
 fn run_done(opt: &Opt, sub_opt: &DoneSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore2::open(&opt.datadir);
-
     store.entry_done(sub_opt.entry_id, &opt.project)?;
 
     Ok(())

@@ -4,14 +4,17 @@ use crate::{
         Entry,
         Metadata,
     },
+    helper::confirm,
     store_v2::Store,
 };
+use chrono::Utc;
 use csv::{
     Error as CsvError,
     ReaderBuilder,
     WriterBuilder,
 };
 use failure::{
+    bail,
     Error,
     ResultExt,
 };
@@ -173,6 +176,11 @@ impl CsvStore {
         self.remove_entry_from_index(index_path, entry)
     }
 
+    fn remove_entry_from_done_index(&self, entry: &Metadata) -> Result<(), Error> {
+        let index_path = self.get_done_index_filename();
+        self.remove_entry_from_index(index_path, entry)
+    }
+
     fn get_entry_for_metadata(&self, metadata: Metadata) -> Result<Entry, Error> {
         let entry_file = self.get_entry_filename(&metadata);
 
@@ -183,6 +191,69 @@ impl CsvStore {
             .context("can not read entry file text")?;
 
         Ok(Entry { metadata, text })
+    }
+
+    fn remove_entry(&self, entry: &Metadata) -> Result<(), Error> {
+        if entry.finished.is_none() {
+            self.remove_entry_from_active_index(entry)
+                .context("can not add entry to active index")?;
+        } else {
+            self.remove_entry_from_done_index(entry)
+                .context("can not add entry to done index")?;
+        }
+
+        Ok(())
+    }
+
+    fn get_projects_from_index(&self, index_path: PathBuf) -> Result<Vec<String>, Error> {
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(index_path)
+            .context("can not build csv reader")?;
+
+        let projects = rdr
+            .deserialize()
+            .collect::<Result<Vec<Metadata>, CsvError>>()
+            .context("can not deserialize csv for active entries")?
+            .into_iter()
+            .map(|metadata| metadata.project)
+            .collect();
+
+        Ok(projects)
+    }
+
+    fn get_metadata_entries<P: AsRef<Path>>(&self, index_path: P) -> Result<Vec<Metadata>, Error> {
+        if !index_path.as_ref().exists() {
+            return Ok(Vec::default());
+        }
+
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(index_path)
+            .context("can not build csv reader")?;
+
+        let metadata_entries = rdr
+            .deserialize()
+            .collect::<Result<Vec<Metadata>, CsvError>>()
+            .context("can not deserialize csv for active entries")?;
+
+        trace!("metadata_entries: {:#?}", metadata_entries);
+
+        Ok(metadata_entries)
+    }
+
+    fn get_active_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
+        let index_path = self.get_active_index_filename();
+        let metadata_entries = self.get_metadata_entries(&index_path)?;
+
+        Ok(metadata_entries)
+    }
+
+    fn get_done_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
+        let index_path = self.get_done_index_filename();
+        let metadata_entries = self.get_metadata_entries(&index_path)?;
+
+        Ok(metadata_entries)
     }
 }
 
@@ -203,41 +274,53 @@ impl Store for CsvStore {
     }
 
     fn entry_done(&self, entry_id: usize, project: &str) -> Result<(), Error> {
+        // TODO: Change this to only fetch the metadata as we dont need to touch the
+        // entry text.
         let entry = self
             .get_entry_by_id(entry_id, project)
             .context("can not get entry from id")?;
 
+        // TODO: This should be handled in main not by the store.
+        let message = format!("do you want to finish this entry?:\n{}", entry.to_string());
+        if !confirm(&message, false)? {
+            bail!("not finishing task then")
+        }
+
         self.remove_entry_from_active_index(&entry.metadata)
             .context("can not remove entry from active index")?;
-        self.add_entry_to_done_index(&entry.metadata)
+
+        let new = Metadata {
+            finished: Some(Utc::now()),
+            ..entry.metadata.clone()
+        };
+
+        trace!("new: {:#?}", new);
+
+        self.add_entry_to_done_index(&new)
             .context("can not add entry to done index")?;
 
         Ok(())
     }
 
-    fn get_active_count(&self, _project: &str) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_active_count(&self, project: &str) -> Result<usize, Error> {
+        let count = self
+            .get_active_metadata_entries()
+            .context("can not get metadata from active index")?
+            .iter()
+            .filter(|metadata| metadata.project == project)
+            .count();
+
+        Ok(count)
     }
 
-    fn get_active_entries(&self, _project: &str) -> Result<Entries, Error> {
-        let index_path = self.get_active_index_filename();
-
-        debug!("index_path: {:?}", index_path);
-
-        let mut rdr = ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(index_path)
-            .context("can not build csv reader")?;
-
-        let metadata_entries = rdr
-            .deserialize()
-            .collect::<Result<Vec<Metadata>, CsvError>>()
-            .context("can not deserialize csv for active entries")?;
-
-        trace!("metadata_entries: {:#?}", metadata_entries);
+    fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
+        let metadata_entries = self
+            .get_active_metadata_entries()
+            .context("can not get metadata from active index")?;
 
         let entries = metadata_entries
             .into_iter()
+            .filter(|metadata| metadata.project == project)
             .map(|metadata| self.get_entry_for_metadata(metadata))
             .collect::<Result<BTreeSet<Entry>, Error>>()
             .context("can not get entry for metadata")?;
@@ -247,16 +330,46 @@ impl Store for CsvStore {
         Ok(Entries { entries })
     }
 
-    fn get_count(&self, _project: &str) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_count(&self, project: &str) -> Result<usize, Error> {
+        let count = self.get_active_count(project)? + self.get_done_count(project)?;
+        Ok(count)
     }
 
-    fn get_done_count(&self, _project: &str) -> Result<usize, Error> {
-        unimplemented!()
+    fn get_done_count(&self, project: &str) -> Result<usize, Error> {
+        let count = self
+            .get_done_metadata_entries()
+            .context("can not get metadata from active index")?
+            .iter()
+            .filter(|metadata| metadata.project == project)
+            .count();
+
+        Ok(count)
     }
 
-    fn get_entries(&self, _project: &str) -> Result<Entries, Error> {
-        unimplemented!()
+    fn get_entries(&self, project: &str) -> Result<Entries, Error> {
+        let metadata_entries = {
+            let mut active_metadata_entries = self
+                .get_active_metadata_entries()
+                .context("can not get metadata from active index")?;
+
+            let mut done_metadata_entries = self
+                .get_done_metadata_entries()
+                .context("can not get metadata from active index")?;
+
+            active_metadata_entries.append(&mut done_metadata_entries);
+            active_metadata_entries
+        };
+
+        let entries = metadata_entries
+            .into_iter()
+            .filter(|metadata| metadata.project == project)
+            .map(|metadata| self.get_entry_for_metadata(metadata))
+            .collect::<Result<BTreeSet<Entry>, Error>>()
+            .context("can not get entry for metadata")?;
+
+        trace!("entries: {:#?}", entries);
+
+        Ok(Entries { entries })
     }
 
     fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
@@ -270,10 +383,27 @@ impl Store for CsvStore {
     }
 
     fn get_projects(&self) -> Result<Vec<String>, Error> {
-        unimplemented!()
+        let mut active_projects = self
+            .get_projects_from_index(self.get_active_index_filename())
+            .context("can not get active projects")?;
+
+        let mut done_projects = self
+            .get_projects_from_index(self.get_active_index_filename())
+            .context("can not get done projects")?;
+
+        active_projects.append(&mut done_projects);
+        active_projects.sort();
+        active_projects.dedup();
+
+        trace!("active_projects: {:#?}", active_projects);
+
+        Ok(active_projects)
     }
 
-    fn update_entry(&self, _old: &Entry, _new: Entry) -> Result<(), Error> {
-        unimplemented!()
+    fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error> {
+        self.remove_entry(&old.metadata)?;
+        self.add_entry(new)?;
+
+        Ok(())
     }
 }
