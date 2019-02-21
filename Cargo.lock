@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "todust"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
