@@ -1,4 +1,4 @@
-use crate::todo::{
+use crate::entry::{
     Entries,
     Entry,
 };

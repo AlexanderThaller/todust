@@ -1,9 +1,9 @@
 use crate::{
-    store::Store,
-    todo::{
+    entry::{
         Entries,
         Entry,
     },
+    store::Store,
 };
 use failure::Error;
 use std::path::{

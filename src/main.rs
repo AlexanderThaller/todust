@@ -1,13 +1,14 @@
 #![allow(dead_code)]
+mod entry;
 mod helper;
 mod measure;
 mod opt;
 mod store;
 mod store_csv2;
 mod store_sqlite;
-mod todo;
 
 use crate::{
+    entry::Entry,
     helper::{
         format_duration,
         string_from_editor,
@@ -25,7 +26,6 @@ use crate::{
     store::Store,
     store_csv2::CsvStore as CsvStore2,
     store_sqlite::SqliteStore,
-    todo::Entry,
 };
 use chrono::Utc;
 use failure::{
