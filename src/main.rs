@@ -199,16 +199,26 @@ fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> 
 
     let new_store = CsvStore2::open(&opt.datadir);
 
-    let entries = old_store
-        .get_entries(&opt.project)
-        .context("can not get entries from old store")?;
+    let projects = if sub_opt.migrate_all {
+        old_store
+            .get_projects()
+            .context("can not get projects from old store")?
+    } else {
+        vec![opt.project.clone()]
+    };
 
-    for entry in entries {
-        trace!("entry: {:#?}", entry);
+    for project in projects {
+        let entries = old_store
+            .get_entries(&project)
+            .context("can not get entries from old store")?;
 
-        new_store
-            .add_entry(entry.into())
-            .context("can not add entry to new store")?;
+        for entry in entries {
+            trace!("entry: {:#?}", entry);
+
+            new_store
+                .add_entry(entry.into())
+                .context("can not add entry to new store")?;
+        }
     }
 
     Ok(())

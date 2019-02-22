@@ -136,6 +136,11 @@ pub struct MigrateSubCommandOpts {
     /// Path of the file/folder from which to migrate from
     #[structopt(index = 1, value_name = "path")]
     pub from_path: PathBuf,
+
+    /// Migrate all projects to new structure instead of just the current
+    /// project
+    #[structopt(short = "a", long = "migrate_all")]
+    pub migrate_all: bool,
 }
 
 /// Options for move subcommand
