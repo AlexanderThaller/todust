@@ -94,6 +94,7 @@ impl Into<EntryV2> for Entry {
                 finished: self.finished,
                 project: self.project_name,
                 uuid: self.uuid,
+                last_change: Utc::now(),
             },
         }
     }

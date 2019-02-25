@@ -37,6 +37,7 @@ pub struct Metadata {
     pub started: DateTime<Utc>,
     pub project: String,
     pub finished: Option<DateTime<Utc>>,
+    pub last_change: DateTime<Utc>,
     pub uuid: Uuid,
 }
 
@@ -47,6 +48,7 @@ impl Default for Metadata {
             started: Utc::now(),
             finished: None,
             uuid: Uuid::new_v4(),
+            last_change: Utc::now(),
         }
     }
 }
