@@ -327,7 +327,8 @@ impl CsvStore {
             info!("found duplicated entries for uuid {}", uuid);
 
             let metadata = &dedup_map[&uuid];
-            self.remove_metadata(&metadata)?;
+            self.remove_entry_from_active_index(&metadata)?;
+            self.remove_entry_from_done_index(&metadata)?;
             self.add_metadata(metadata.clone())?
         }
 
