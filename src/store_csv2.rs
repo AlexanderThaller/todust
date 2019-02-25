@@ -242,6 +242,23 @@ impl CsvStore {
         Ok(metadata_entries)
     }
 
+    fn get_all_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
+        let metadata_entries = {
+            let mut active_metadata_entries = self
+                .get_active_metadata_entries()
+                .context("can not get metadata from active index")?;
+
+            let mut done_metadata_entries = self
+                .get_done_metadata_entries()
+                .context("can not get metadata from active index")?;
+
+            active_metadata_entries.append(&mut done_metadata_entries);
+            active_metadata_entries
+        };
+
+        Ok(metadata_entries)
+    }
+
     fn get_active_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
         let index_path = self.get_active_index_filename();
         let metadata_entries = self.get_metadata_entries(&index_path)?;
@@ -347,18 +364,7 @@ impl Store for CsvStore {
     }
 
     fn get_entries(&self, project: &str) -> Result<Entries, Error> {
-        let metadata_entries = {
-            let mut active_metadata_entries = self
-                .get_active_metadata_entries()
-                .context("can not get metadata from active index")?;
-
-            let mut done_metadata_entries = self
-                .get_done_metadata_entries()
-                .context("can not get metadata from active index")?;
-
-            active_metadata_entries.append(&mut done_metadata_entries);
-            active_metadata_entries
-        };
+        let metadata_entries = self.get_all_metadata_entries()?;
 
         let entries = metadata_entries
             .into_iter()
@@ -405,5 +411,9 @@ impl Store for CsvStore {
         self.add_entry(new)?;
 
         Ok(())
+    }
+
+    fn get_metadata(&self) -> Result<Vec<Metadata>, Error> {
+        self.get_all_metadata_entries()
     }
 }

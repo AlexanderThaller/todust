@@ -53,7 +53,9 @@ use simplelog::{
     Config,
     TermLogger,
 };
+use std::collections::HashMap;
 use structopt::StructOpt;
+use uuid::Uuid;
 
 fn main() {
     if let Err(err) = run() {
@@ -93,6 +95,7 @@ fn run() -> Result<(), Error> {
 
     match &opt.cmd {
         SubCommand::Add => run_add(&opt),
+        SubCommand::Cleanup => run_cleanup(&opt),
         SubCommand::Done(sub_opt) => run_done(&opt, sub_opt),
         SubCommand::Edit(sub_opt) => run_edit(&opt, sub_opt),
         SubCommand::List => run_list(&opt),
@@ -325,4 +328,28 @@ b->done_count, b->count]);
     table.printstd();
 
     Ok(())
+}
+
+fn run_cleanup(opt: &Opt) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
+
+    let mut dedup_map: HashMap<Uuid, Metadata> = HashMap::default();
+
+    let entries = store.get_metadata()?;
+    for entry in entries {
+        match dedup_map.get(&entry.uuid) {
+            None => {
+                dedup_map.insert(entry.uuid, entry);
+            }
+            Some(dedup_entry) => {
+                if entry > *dedup_entry {
+                    dedup_map.insert(entry.uuid, entry);
+                }
+            }
+        };
+    }
+
+    trace!("dedup_map: {:#?}", dedup_map);
+
+    unimplemented!()
 }

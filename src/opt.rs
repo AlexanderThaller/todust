@@ -96,6 +96,10 @@ pub enum SubCommand {
     /// Print all projects saved in todust
     #[structopt(name = "projects")]
     Projects(ProjectsSubCommandOpts),
+
+    /// Cleanup index and unreferenced todos
+    #[structopt(name = "cleanup")]
+    Cleanup,
 }
 
 /// Options for print subcommand
