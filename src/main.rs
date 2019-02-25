@@ -19,6 +19,7 @@ use crate::{
         string_from_editor,
     },
     opt::{
+        AddSubCommandOpts,
         DoneSubCommandOpts,
         EditSubCommandOpts,
         MigrateSubCommandOpts,
@@ -94,7 +95,7 @@ fn run() -> Result<(), Error> {
     trace!("opt: {:#?}", opt);
 
     match &opt.cmd {
-        SubCommand::Add => run_add(&opt),
+        SubCommand::Add(sub_opt) => run_add(&opt, sub_opt),
         SubCommand::Cleanup => run_cleanup(&opt),
         SubCommand::Done(sub_opt) => run_done(&opt, sub_opt),
         SubCommand::Edit(sub_opt) => run_edit(&opt, sub_opt),
@@ -106,10 +107,14 @@ fn run() -> Result<(), Error> {
     }
 }
 
-fn run_add(opt: &Opt) -> Result<(), Error> {
+fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore2::open(&opt.datadir);
 
-    let text = string_from_editor(None).context("can not get message from editor")?;
+    let text = if let Some(opt_text) = &sub_opt.text {
+        opt_text.clone()
+    } else {
+        string_from_editor(None).context("can not get message from editor")?
+    };
 
     let entry = Entry {
         text,
