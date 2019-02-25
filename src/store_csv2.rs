@@ -18,12 +18,17 @@ use failure::{
     Error,
     ResultExt,
 };
+use glob::glob;
 use log::{
     debug,
+    info,
     trace,
 };
 use std::{
-    collections::BTreeSet,
+    collections::{
+        BTreeSet,
+        HashMap,
+    },
     fs::{
         self,
         OpenOptions,
@@ -37,6 +42,7 @@ use std::{
         PathBuf,
     },
 };
+use uuid::Uuid;
 
 pub struct CsvStore {
     datadir: PathBuf,
@@ -285,6 +291,79 @@ impl CsvStore {
 
         Ok(())
     }
+
+    fn cleanup_duplicate_uuids(&self) -> Result<(), Error> {
+        let mut dedup_map: HashMap<Uuid, Metadata> = HashMap::default();
+
+        let metadatas = self.get_metadata()?;
+        for metadata in metadatas {
+            match dedup_map.get(&metadata.uuid) {
+                None => {
+                    dedup_map.insert(metadata.uuid, metadata);
+                }
+                Some(dedup_metadata) => {
+                    if metadata > *dedup_metadata {
+                        dedup_map.insert(metadata.uuid, metadata);
+                    }
+                }
+            };
+        }
+
+        trace!("dedup_map: {:#?}", dedup_map);
+
+        for (_, metadata) in dedup_map {
+            self.remove_metadata(&metadata)?;
+            self.add_metadata(metadata)?
+        }
+
+        Ok(())
+    }
+
+    fn cleanup_stale_index_entries(&self) -> Result<(), Error> {
+        let metadatas = self.get_metadata()?;
+
+        for metadata in metadatas {
+            let filename = self.get_entry_filename(&metadata);
+
+            if !filename.exists() {
+                info!("removed stale metadata {:?}", metadata);
+                self.remove_metadata(&metadata)?
+            }
+        }
+
+        Ok(())
+    }
+
+    fn cleanup_unreferenced_entry(&self) -> Result<(), Error> {
+        let glob_text = format!("{}/entries/**/*.adoc", self.datadir.to_str().unwrap());
+
+        let store_uuids = self
+            .get_metadata()?
+            .iter()
+            .map(|metadata| metadata.uuid)
+            .collect::<BTreeSet<_>>();
+
+        for entry in glob(&glob_text).context("failed to read glob pattern")? {
+            if let Ok(path) = entry {
+                let uuid = path
+                    .file_stem()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .parse::<Uuid>()
+                    .context("can not parse uuid from file name")?;
+
+                if !store_uuids.contains(&uuid) {
+                    info!("remove unreferenced entry: {:?}", path);
+                    fs::remove_file(path)?;
+                }
+
+                trace!("uuid from file entry: {:?}", uuid);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Store for CsvStore {
@@ -442,5 +521,13 @@ impl Store for CsvStore {
 
     fn remove_metadata(&self, metadata: &Metadata) -> Result<(), Error> {
         self.remove_entry(metadata)
+    }
+
+    fn run_cleanup(&self) -> Result<(), Error> {
+        self.cleanup_duplicate_uuids()?;
+        self.cleanup_stale_index_entries()?;
+        self.cleanup_unreferenced_entry()?;
+
+        Ok(())
     }
 }

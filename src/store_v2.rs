@@ -19,4 +19,5 @@ pub trait Store {
     fn get_metadata(&self) -> Result<Vec<Metadata>, Error>;
     fn remove_metadata(&self, metadata: &Metadata) -> Result<(), Error>;
     fn add_metadata(&self, metadata: Metadata) -> Result<(), Error>;
+    fn run_cleanup(&self) -> Result<(), Error>;
 }
