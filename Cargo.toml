@@ -6,6 +6,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+chrono-humanize = "0.0.11"
 csv = "1"
 failure = "0.1"
 glob = "0.2"

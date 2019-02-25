@@ -35,10 +35,10 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Metadata {
     pub last_change: DateTime<Utc>,
+    pub due: Option<DateTime<Utc>>,
     pub started: DateTime<Utc>,
     pub project: String,
     pub finished: Option<DateTime<Utc>>,
-    pub due: Option<DateTime<Utc>>,
     pub uuid: Uuid,
 }
 

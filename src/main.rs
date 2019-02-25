@@ -16,6 +16,7 @@ use crate::{
     },
     helper::{
         format_duration,
+        format_timestamp,
         string_from_editor,
     },
     opt::{
@@ -190,12 +191,13 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row![b->"ID", b->"Age", b->"Description"]);
+    table.set_titles(row![b->"ID", b->"Age", b->"Due", b->"Description"]);
 
     for (index, entry) in entries.into_iter().enumerate() {
         table.add_row(row![
             index + 1,
             format_duration(entry.age()),
+            format_timestamp(entry.metadata.due),
             format!("{}", entry),
         ]);
     }
