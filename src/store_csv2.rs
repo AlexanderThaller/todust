@@ -294,9 +294,12 @@ impl CsvStore {
 
     fn cleanup_duplicate_uuids(&self) -> Result<(), Error> {
         let mut dedup_map: HashMap<Uuid, Metadata> = HashMap::default();
+        let mut seen_map: HashMap<Uuid, usize> = HashMap::default();
 
         let metadatas = self.get_metadata()?;
         for metadata in metadatas {
+            *seen_map.entry(metadata.uuid).or_insert(0) += 1;
+
             match dedup_map.get(&metadata.uuid) {
                 None => {
                     dedup_map.insert(metadata.uuid, metadata);
@@ -309,11 +312,23 @@ impl CsvStore {
             };
         }
 
+        let duplicate_entries = seen_map
+            .into_iter()
+            .filter(|(uuid, seen_count)| {
+                debug!("seen uuid {}, {} times", uuid, seen_count);
+                *seen_count != 1
+            })
+            .map(|(uuid, _)| uuid)
+            .collect::<Vec<Uuid>>();
+
         trace!("dedup_map: {:#?}", dedup_map);
 
-        for (_, metadata) in dedup_map {
+        for uuid in duplicate_entries {
+            info!("found duplicated entries for uuid {}", uuid);
+
+            let metadata = &dedup_map[&uuid];
             self.remove_metadata(&metadata)?;
-            self.add_metadata(metadata)?
+            self.add_metadata(metadata.clone())?
         }
 
         Ok(())
