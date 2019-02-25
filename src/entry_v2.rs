@@ -34,21 +34,21 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Metadata {
+    pub last_change: DateTime<Utc>,
     pub started: DateTime<Utc>,
     pub project: String,
     pub finished: Option<DateTime<Utc>>,
-    pub last_change: DateTime<Utc>,
     pub uuid: Uuid,
 }
 
 impl Default for Metadata {
     fn default() -> Self {
         Self {
+            last_change: Utc::now(),
             project: "default".to_owned(),
             started: Utc::now(),
             finished: None,
             uuid: Uuid::new_v4(),
-            last_change: Utc::now(),
         }
     }
 }

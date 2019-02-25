@@ -272,6 +272,19 @@ impl CsvStore {
 
         Ok(metadata_entries)
     }
+
+    fn add_metadata_to_store(&self, metadata: Metadata) -> Result<(), Error> {
+        match metadata.finished {
+            None => self
+                .add_entry_to_active_index(&metadata)
+                .context("can not add entry to active index")?,
+            Some(_) => self
+                .add_entry_to_done_index(&metadata)
+                .context("can not add entry to done index")?,
+        }
+
+        Ok(())
+    }
 }
 
 impl Store for CsvStore {
@@ -279,13 +292,7 @@ impl Store for CsvStore {
         self.write_entry_text(&entry)
             .context("can not write entry text to file")?;
 
-        if entry.metadata.finished.is_none() {
-            self.add_entry_to_active_index(&entry.metadata)
-                .context("can not add entry to active index")?;
-        } else {
-            self.add_entry_to_done_index(&entry.metadata)
-                .context("can not add entry to done index")?;
-        }
+        self.add_metadata(entry.metadata)?;
 
         Ok(())
     }
@@ -415,5 +422,13 @@ impl Store for CsvStore {
 
     fn get_metadata(&self) -> Result<Vec<Metadata>, Error> {
         self.get_all_metadata_entries()
+    }
+
+    fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
+        self.add_metadata_to_store(metadata)
+    }
+
+    fn remove_metadata(&self, metadata: &Metadata) -> Result<(), Error> {
+        self.remove_entry(metadata)
     }
 }

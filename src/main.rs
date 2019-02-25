@@ -183,6 +183,11 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
         .get_active_entries(&opt.project)
         .context("can not get entries from store")?;
 
+    if entries.is_empty() {
+        println!("no active todos");
+        return Ok(());
+    }
+
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
     table.set_titles(row![b->"ID", b->"Age", b->"Description"]);
@@ -340,15 +345,15 @@ fn run_cleanup(opt: &Opt) -> Result<(), Error> {
 
     let mut dedup_map: HashMap<Uuid, Metadata> = HashMap::default();
 
-    let entries = store.get_metadata()?;
-    for entry in entries {
-        match dedup_map.get(&entry.uuid) {
+    let metadatas = store.get_metadata()?;
+    for metadata in metadatas {
+        match dedup_map.get(&metadata.uuid) {
             None => {
-                dedup_map.insert(entry.uuid, entry);
+                dedup_map.insert(metadata.uuid, metadata);
             }
-            Some(dedup_entry) => {
-                if entry > *dedup_entry {
-                    dedup_map.insert(entry.uuid, entry);
+            Some(dedup_metadata) => {
+                if metadata > *dedup_metadata {
+                    dedup_map.insert(metadata.uuid, metadata);
                 }
             }
         };
@@ -356,5 +361,10 @@ fn run_cleanup(opt: &Opt) -> Result<(), Error> {
 
     trace!("dedup_map: {:#?}", dedup_map);
 
-    unimplemented!()
+    for (_, metadata) in dedup_map {
+        store.remove_metadata(&metadata)?;
+        store.add_metadata(metadata)?
+    }
+
+    Ok(())
 }
