@@ -365,7 +365,7 @@ fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
             trace!("entry: {:#?}", entry);
 
             new_store
-                .add_entry(entry.into())
+                .add_entry(entry)
                 .context("can not add entry to new store")?;
         }
     }

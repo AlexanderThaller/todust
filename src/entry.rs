@@ -132,7 +132,7 @@ impl Entries {
     }
 
     pub fn get_active(self) -> Entries {
-        self.into_iter().filter(|entry| entry.is_active()).collect()
+        self.into_iter().filter(Entry::is_active).collect()
     }
 
     pub fn entry_by_id(self, id: usize) -> Result<Entry, Error> {
