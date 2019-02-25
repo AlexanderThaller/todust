@@ -331,7 +331,13 @@ impl Store for CsvStore {
             .get_active_metadata_entries()
             .context("can not get metadata from active index")?
             .iter()
-            .filter(|metadata| metadata.project == project)
+            .filter(|metadata| {
+                if project == "%" {
+                    true
+                } else {
+                    metadata.project == project
+                }
+            })
             .count();
 
         Ok(count)
@@ -364,7 +370,13 @@ impl Store for CsvStore {
             .get_done_metadata_entries()
             .context("can not get metadata from active index")?
             .iter()
-            .filter(|metadata| metadata.project == project)
+            .filter(|metadata| {
+                if project == "%" {
+                    true
+                } else {
+                    metadata.project == project
+                }
+            })
             .count();
 
         Ok(count)
