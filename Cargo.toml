@@ -33,7 +33,7 @@ version = "0.7"
 
 [dependencies.rusqlite]
 features = ["chrono"]
-version = "0.14"
+version = "0.16"
 
 [profile.release]
 lto = true
