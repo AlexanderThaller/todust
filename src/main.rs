@@ -22,6 +22,7 @@ use crate::{
         AddSubCommandOpts,
         DoneSubCommandOpts,
         EditSubCommandOpts,
+        ImportSubCommandOpts,
         MigrateSubCommandOpts,
         MoveSubCommandOpts,
         Opt,
@@ -102,6 +103,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Move(sub_opt) => run_move(&opt, sub_opt),
         SubCommand::Print(sub_opt) => run_print(&opt, sub_opt),
         SubCommand::Projects(sub_opt) => run_projects(&opt, sub_opt),
+        SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
     }
 }
 
@@ -340,4 +342,33 @@ b->done_count, b->count]);
 
 fn run_cleanup(opt: &Opt) -> Result<(), Error> {
     CsvStore2::open(&opt.datadir).run_cleanup()
+}
+
+fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
+    let from_store = CsvStore2::open(&sub_opt.from_path);
+    let new_store = CsvStore2::open(&opt.datadir);
+
+    let projects = if sub_opt.import_all {
+        from_store
+            .get_projects()
+            .context("can not get projects from old store")?
+    } else {
+        vec![opt.project.clone()]
+    };
+
+    for project in projects {
+        let entries = from_store
+            .get_entries(&project)
+            .context("can not get entries from old store")?;
+
+        for entry in entries {
+            trace!("entry: {:#?}", entry);
+
+            new_store
+                .add_entry(entry.into())
+                .context("can not add entry to new store")?;
+        }
+    }
+
+    Ok(())
 }

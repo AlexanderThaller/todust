@@ -100,6 +100,10 @@ pub enum SubCommand {
     /// Cleanup index and unreferenced todos
     #[structopt(name = "cleanup")]
     Cleanup,
+
+    /// Import entries from a different store
+    #[structopt(name = "import")]
+    Import(ImportSubCommandOpts),
 }
 
 /// Options for the add subcommand
@@ -174,4 +178,16 @@ pub struct ProjectsSubCommandOpts {
     /// projects will not be listed
     #[structopt(short = "i", long = "print_inactive")]
     pub print_inactive: bool,
+}
+
+/// Options for import subcommand
+#[derive(StructOpt, Debug)]
+pub struct ImportSubCommandOpts {
+    /// Path of the file/folder from which to import from
+    #[structopt(index = 1, value_name = "path")]
+    pub from_path: PathBuf,
+
+    /// Import all projects instead of just the current project
+    #[structopt(short = "a", long = "import_all")]
+    pub import_all: bool,
 }
