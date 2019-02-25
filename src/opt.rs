@@ -64,9 +64,9 @@ pub struct Opt {
 /// Available subcommands in the application
 #[derive(StructOpt, Debug)]
 pub enum SubCommand {
-    /// Start editor and add note
+    /// Add a new todo entry. If no text is given $EDITOR will be launched.
     #[structopt(name = "add")]
-    Add,
+    Add(AddSubCommandOpts),
 
     /// Print formatted todos
     #[structopt(name = "print")]
@@ -96,6 +96,18 @@ pub enum SubCommand {
     /// Print all projects saved in todust
     #[structopt(name = "projects")]
     Projects(ProjectsSubCommandOpts),
+
+    /// Cleanup index and unreferenced todos
+    #[structopt(name = "cleanup")]
+    Cleanup,
+}
+
+/// Options for the add subcommand
+#[derive(StructOpt, Debug)]
+pub struct AddSubCommandOpts {
+    /// Text of the entry
+    #[structopt(index = 1, value_name = "text")]
+    pub text: Option<String>,
 }
 
 /// Options for print subcommand

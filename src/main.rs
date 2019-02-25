@@ -19,6 +19,7 @@ use crate::{
         string_from_editor,
     },
     opt::{
+        AddSubCommandOpts,
         DoneSubCommandOpts,
         EditSubCommandOpts,
         MigrateSubCommandOpts,
@@ -92,7 +93,8 @@ fn run() -> Result<(), Error> {
     trace!("opt: {:#?}", opt);
 
     match &opt.cmd {
-        SubCommand::Add => run_add(&opt),
+        SubCommand::Add(sub_opt) => run_add(&opt, sub_opt),
+        SubCommand::Cleanup => run_cleanup(&opt),
         SubCommand::Done(sub_opt) => run_done(&opt, sub_opt),
         SubCommand::Edit(sub_opt) => run_edit(&opt, sub_opt),
         SubCommand::List => run_list(&opt),
@@ -103,10 +105,14 @@ fn run() -> Result<(), Error> {
     }
 }
 
-fn run_add(opt: &Opt) -> Result<(), Error> {
+fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore2::open(&opt.datadir);
 
-    let text = string_from_editor(None).context("can not get message from editor")?;
+    let text = if let Some(opt_text) = &sub_opt.text {
+        opt_text.clone()
+    } else {
+        string_from_editor(None).context("can not get message from editor")?
+    };
 
     let entry = Entry {
         text,
@@ -174,6 +180,11 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
     let entries = store
         .get_active_entries(&opt.project)
         .context("can not get entries from store")?;
+
+    if entries.is_empty() {
+        println!("no active todos");
+        return Ok(());
+    }
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
@@ -325,4 +336,8 @@ b->done_count, b->count]);
     table.printstd();
 
     Ok(())
+}
+
+fn run_cleanup(opt: &Opt) -> Result<(), Error> {
+    CsvStore2::open(&opt.datadir).run_cleanup()
 }
