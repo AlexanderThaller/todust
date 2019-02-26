@@ -410,6 +410,7 @@ impl Store for CsvStore {
 
         let new = Metadata {
             finished: Some(Utc::now()),
+            last_change: Utc::now(),
             ..entry.metadata.clone()
         };
 

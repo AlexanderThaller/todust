@@ -161,6 +161,7 @@ editor",
             text: new_text,
             metadata: Metadata {
                 started: Utc::now(),
+                last_change: Utc::now(),
                 ..old_entry.metadata.clone()
             },
         }
@@ -231,8 +232,16 @@ fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> 
         for entry in entries {
             trace!("entry: {:#?}", entry);
 
+            let new_entry: Entry = entry.into();
+
             new_store
-                .add_entry(entry.into())
+                .add_entry(Entry {
+                    metadata: Metadata {
+                        last_change: Utc::now(),
+                        ..new_entry.metadata
+                    },
+                    ..new_entry
+                })
                 .context("can not add entry to new store")?;
         }
     }
@@ -251,6 +260,7 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
         text: old_entry.text.clone(),
         metadata: Metadata {
             project: sub_opt.target_project.clone(),
+            last_change: Utc::now(),
             ..old_entry.metadata.clone()
         },
     };
@@ -367,8 +377,16 @@ fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
         for entry in entries {
             trace!("entry: {:#?}", entry);
 
+            let new_entry = Entry {
+                metadata: Metadata {
+                    last_change: Utc::now(),
+                    ..entry.metadata
+                },
+                ..entry
+            };
+
             new_store
-                .add_entry(entry)
+                .add_entry(new_entry)
                 .context("can not add entry to new store")?;
         }
     }
@@ -387,6 +405,7 @@ fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
         text: old_entry.text.clone(),
         metadata: Metadata {
             due: Some(sub_opt.due_date),
+            last_change: Utc::now(),
             ..old_entry.metadata.clone()
         },
     };
