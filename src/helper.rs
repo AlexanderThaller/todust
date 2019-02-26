@@ -1,9 +1,7 @@
 use chrono::{
-    DateTime,
     Duration,
-    Utc,
+    NaiveDate,
 };
-use chrono_humanize::HumanTime;
 use failure::{
     bail,
     Error,
@@ -96,13 +94,11 @@ pub fn format_duration(duration: Duration) -> String {
     format!("{}d", duration.num_days())
 }
 
-pub fn format_timestamp(time_stamp: Option<DateTime<Utc>>) -> String {
+pub fn format_timestamp(time_stamp: Option<NaiveDate>) -> String {
     if time_stamp.is_none() {
         return "-".to_string();
     }
     let time_stamp = time_stamp.unwrap();
 
-    let ht = HumanTime::from(time_stamp);
-
-    ht.to_string()
+    format!("{}", time_stamp)
 }

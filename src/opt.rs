@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use lazy_static::lazy_static;
 use simplelog::LevelFilter;
 use std::path::PathBuf;
@@ -104,6 +105,10 @@ pub enum SubCommand {
     /// Import entries from a different store
     #[structopt(name = "import")]
     Import(ImportSubCommandOpts),
+
+    /// Set due date for entry
+    #[structopt(name = "due")]
+    Due(DueSubCommandOpts),
 }
 
 /// Options for the add subcommand
@@ -190,4 +195,16 @@ pub struct ImportSubCommandOpts {
     /// Import all projects instead of just the current project
     #[structopt(short = "a", long = "import_all")]
     pub import_all: bool,
+}
+
+/// Options for due subcommand
+#[derive(StructOpt, Debug)]
+pub struct DueSubCommandOpts {
+    /// Id of the task for which the due date should be set
+    #[structopt(index = 1, value_name = "id")]
+    pub entry_id: usize,
+
+    /// When the task is due. Has to be date in format 2019-12-24
+    #[structopt(index = 2, value_name = "due_date")]
+    pub due_date: NaiveDate,
 }
