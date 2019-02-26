@@ -95,6 +95,7 @@ impl Into<EntryV2> for Entry {
                 project: self.project_name,
                 uuid: self.uuid,
                 last_change: Utc::now(),
+                due: None,
             },
         }
     }

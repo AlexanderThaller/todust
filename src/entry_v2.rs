@@ -1,6 +1,7 @@
 use crate::helper;
 use chrono::{
     DateTime,
+    NaiveDate,
     Utc,
 };
 use failure::{
@@ -35,6 +36,7 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
 pub struct Metadata {
     pub last_change: DateTime<Utc>,
+    pub due: Option<NaiveDate>,
     pub started: DateTime<Utc>,
     pub project: String,
     pub finished: Option<DateTime<Utc>>,
@@ -48,6 +50,7 @@ impl Default for Metadata {
             project: "default".to_owned(),
             started: Utc::now(),
             finished: None,
+            due: None,
             uuid: Uuid::new_v4(),
         }
     }

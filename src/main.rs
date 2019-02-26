@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 mod entry;
 mod entry_v2;
 mod helper;
@@ -16,11 +15,13 @@ use crate::{
     },
     helper::{
         format_duration,
+        format_timestamp,
         string_from_editor,
     },
     opt::{
         AddSubCommandOpts,
         DoneSubCommandOpts,
+        DueSubCommandOpts,
         EditSubCommandOpts,
         ImportSubCommandOpts,
         MigrateSubCommandOpts,
@@ -104,6 +105,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Print(sub_opt) => run_print(&opt, sub_opt),
         SubCommand::Projects(sub_opt) => run_projects(&opt, sub_opt),
         SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
+        SubCommand::Due(sub_opt) => run_due(&opt, sub_opt),
     }
 }
 
@@ -190,12 +192,13 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row![b->"ID", b->"Age", b->"Description"]);
+    table.set_titles(row![b->"ID", b->"Age", b->"Due", b->"Description"]);
 
     for (index, entry) in entries.into_iter().enumerate() {
         table.add_row(row![
             index + 1,
             format_duration(entry.age()),
+            format_timestamp(entry.metadata.due),
             format!("{}", entry),
         ]);
     }
@@ -369,6 +372,28 @@ fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
                 .context("can not add entry to new store")?;
         }
     }
+
+    Ok(())
+}
+
+fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
+
+    let old_entry = store
+        .get_entry_by_id(sub_opt.entry_id, &opt.project)
+        .context("can not get entry")?;
+
+    let new_entry = Entry {
+        text: old_entry.text.clone(),
+        metadata: Metadata {
+            due: Some(sub_opt.due_date),
+            ..old_entry.metadata.clone()
+        },
+    };
+
+    store
+        .update_entry(&old_entry, new_entry)
+        .context("can not update entry")?;
 
     Ok(())
 }
