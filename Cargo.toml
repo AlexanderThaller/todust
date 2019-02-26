@@ -1,6 +1,6 @@
 [package]
 name = "todust"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Alexander Thaller <alexander.thaller@trivago.com>"]
 license = "MIT"
 edition = "2018"
