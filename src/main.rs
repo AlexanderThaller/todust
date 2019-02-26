@@ -1,153 +1,130 @@
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate log;
-extern crate simplelog;
-extern crate time;
-
-extern crate chrono;
-extern crate uuid;
-
-extern crate csv;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate rusqlite;
-extern crate serde_json;
-
-#[macro_use]
-extern crate prettytable;
-#[macro_use]
-extern crate text_io;
-#[macro_use]
-extern crate tera;
-
-extern crate tempfile;
-
+mod entry;
+mod entry_v2;
 mod helper;
 mod measure;
+mod opt;
 mod store;
-mod store_csv;
+mod store_csv2;
 mod store_sqlite;
-mod todo;
+mod store_v2;
 
+use crate::{
+    entry_v2::{
+        Entry,
+        Metadata,
+    },
+    helper::{
+        format_duration,
+        format_timestamp,
+        string_from_editor,
+    },
+    opt::{
+        AddSubCommandOpts,
+        DoneSubCommandOpts,
+        DueSubCommandOpts,
+        EditSubCommandOpts,
+        ImportSubCommandOpts,
+        MigrateSubCommandOpts,
+        MoveSubCommandOpts,
+        Opt,
+        PrintSubCommandOpts,
+        ProjectsSubCommandOpts,
+        SubCommand,
+    },
+    store::Store,
+    store_csv2::CsvStore as CsvStore2,
+    store_sqlite::SqliteStore,
+    store_v2::Store as StoreV2,
+};
 use chrono::Utc;
-use clap::ArgMatches;
 use failure::{
-    Context,
+    bail,
     Error,
     ResultExt,
 };
-use helper::{
-    format_duration,
-    string_from_editor,
+use log::{
+    error,
+    trace,
 };
 use prettytable::{
+    cell,
     format,
+    row,
     Table,
 };
-use std::path::PathBuf;
-use store::Store;
-use store_csv::CsvStore;
-use store_sqlite::SqliteStore;
-use todo::Entry;
+use simplelog::{
+    Config,
+    TermLogger,
+};
+use structopt::StructOpt;
 
 fn main() {
     if let Err(err) = run() {
-        let mut causes = String::new();
-        for c in err.iter_chain() {
-            causes += &format!(": {}", c);
-        }
-
-        error!("{}", causes);
+        error!("{}", format_err(&err));
         trace!("backtrace:\n{}", err.backtrace());
 
         ::std::process::exit(1);
     }
 }
 
+fn format_err(err: &Error) -> String {
+    let mut causes = String::new();
+    for c in err.iter_chain() {
+        causes += &format!("{}: ", c);
+    }
+
+    let causes = causes.trim_start().trim_start_matches(':');
+
+    causes.to_owned()
+}
+
 fn run() -> Result<(), Error> {
-    let yaml = load_yaml!("cli.yml");
-    let matches = clap::App::from_yaml(yaml)
-        .name(crate_name!())
-        .version(crate_version!())
-        .about(crate_description!())
-        .author(crate_authors!())
-        .get_matches();
+    let opt = Opt::from_args();
 
     // setup logging
     {
-        use simplelog::*;
-
         let mut config = Config::default();
         config.time_format = Some("%+");
 
-        if let Err(err) = TermLogger::init(value_t!(matches, "log_level", LevelFilter)?, config) {
+        if let Err(err) = TermLogger::init(opt.log_level, config) {
             eprintln!("can not initialize logger: {}", err);
             ::std::process::exit(1);
         }
     }
 
-    match matches.subcommand_name() {
-        Some("add") => run_add(
-            matches
-                .subcommand_matches("add")
-                .ok_or_else(|| Context::new("can not get subcommand matches for add"))?,
-        ),
-        Some("print") => run_print(
-            matches
-                .subcommand_matches("print")
-                .ok_or_else(|| Context::new("can not get subcommand matches for print"))?,
-        ),
-        Some("list") => run_list(
-            matches
-                .subcommand_matches("list")
-                .ok_or_else(|| Context::new("can not get subcommand matches for list"))?,
-        ),
-        Some("done") => run_done(
-            matches
-                .subcommand_matches("done")
-                .ok_or_else(|| Context::new("can not get subcommand matches for done"))?,
-        ),
-        Some("edit") => run_edit(
-            matches
-                .subcommand_matches("edit")
-                .ok_or_else(|| Context::new("can not get subcommand matches for edit"))?,
-        ),
-        Some("migrate") => run_migrate(
-            matches
-                .subcommand_matches("migrate")
-                .ok_or_else(|| Context::new("can not get subcommand matches for migrate"))?,
-        ),
-        Some("projects") => run_projects(
-            matches
-                .subcommand_matches("projects")
-                .ok_or_else(|| Context::new("can not get subcommand matches for projects"))?,
-        ),
-        Some("move") => run_move(
-            matches
-                .subcommand_matches("move")
-                .ok_or_else(|| Context::new("can not get subcommand matches for move"))?,
-        ),
-        _ => unreachable!(),
+    trace!("opt: {:#?}", opt);
+
+    match &opt.cmd {
+        SubCommand::Add(sub_opt) => run_add(&opt, sub_opt),
+        SubCommand::Cleanup => run_cleanup(&opt),
+        SubCommand::Done(sub_opt) => run_done(&opt, sub_opt),
+        SubCommand::Edit(sub_opt) => run_edit(&opt, sub_opt),
+        SubCommand::List => run_list(&opt),
+        SubCommand::Migrate(sub_opt) => run_migrate(&opt, sub_opt),
+        SubCommand::Move(sub_opt) => run_move(&opt, sub_opt),
+        SubCommand::Print(sub_opt) => run_print(&opt, sub_opt),
+        SubCommand::Projects(sub_opt) => run_projects(&opt, sub_opt),
+        SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
+        SubCommand::Due(sub_opt) => run_due(&opt, sub_opt),
     }
 }
 
-fn run_add(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
+fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
 
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
+    let text = if let Some(opt_text) = &sub_opt.text {
+        opt_text.clone()
+    } else {
+        string_from_editor(None).context("can not get message from editor")?
+    };
 
-    let entry = Entry::default()
-        .with_text(string_from_editor(None).context("can not get message from editor")?)
-        .with_project(matches.value_of("project").map(str::to_string));
+    let entry = Entry {
+        text,
+        metadata: Metadata {
+            project: opt.project.clone(),
+            ..Metadata::default()
+        },
+    };
 
     store
         .add_entry(entry)
@@ -156,136 +133,37 @@ fn run_add(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_print(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
-
-    let project = matches.value_of("project");
-
-    let no_done = matches.is_present("no_done");
-    let entry_id = matches.value_of("entry_id");
-
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
-
-    if entry_id.is_none() {
-        if no_done {
-            let entries = store
-                .get_active_entries(project)
-                .context("can not get entries from store")?;
-
-            println!("{}", entries);
-        } else {
-            let entries = store
-                .get_entries(project)
-                .context("can not get entries from store")?;
-
-            println!("{}", entries);
-        }
-
-        return Ok(());
-    }
-
-    let entry_id = entry_id
-        .unwrap()
-        .parse::<usize>()
-        .context("can not parse entry_id")?;
-
-    let entry = store
-        .get_entry_by_id(entry_id, project)
-        .context("can not get entry")?;
-    println!("{}", entry.to_string());
+fn run_done(opt: &Opt, sub_opt: &DoneSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
+    store.entry_done(sub_opt.entry_id, &opt.project)?;
 
     Ok(())
 }
 
-fn run_list(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
-
-    let project = matches.value_of("project");
-
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
-
-    let entries = store
-        .get_active_entries(project)
-        .context("can not get entries from store")?;
-
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-
-    table.add_row(row![b -> "ID", b -> "Age", b -> "Description"]);
-    for (index, entry) in entries.into_iter().enumerate() {
-        table.add_row(row![
-            index + 1,
-            format_duration(entry.age()),
-            format!("{}", entry),
-        ]);
-    }
-
-    table.printstd();
-
-    Ok(())
-}
-
-fn run_done(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
-
-    let project = matches.value_of("project");
-
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
-
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
-
-    store.entry_done(entry_id, project)?;
-
-    Ok(())
-}
-
-fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
-
-    let project = matches.value_of("project");
-
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
-
-    let update_time = matches.is_present("update_time");
-
-    if entry_id < 1 {
+fn run_edit(opt: &Opt, sub_opt: &EditSubCommandOpts) -> Result<(), Error> {
+    if sub_opt.entry_id < 1 {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
+    let store = CsvStore2::open(&opt.datadir);
 
     let old_entry = store
-        .get_entry_by_id(entry_id, project)
+        .get_entry_by_id(sub_opt.entry_id, &opt.project)
         .context("can not get entry")?;
 
-    let new_text =
-        string_from_editor(Some(&old_entry.text)).context("can not edit entry with editor")?;
+    let new_text = string_from_editor(Some(&old_entry.text)).context(
+        "can not edit entry with
+editor",
+    )?;
 
-    let new_entry = if update_time {
+    let new_entry = if sub_opt.update_time {
         Entry {
             text: new_text,
-            started: Utc::now(),
-            ..old_entry.clone()
+            metadata: Metadata {
+                started: Utc::now(),
+                last_change: Utc::now(),
+                ..old_entry.metadata.clone()
+            },
         }
     } else {
         Entry {
@@ -301,83 +179,235 @@ fn run_edit(matches: &ArgMatches) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_migrate(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
+fn run_list(opt: &Opt) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
 
-    let project = matches.value_of("project");
+    let entries = store
+        .get_active_entries(&opt.project)
+        .context("can not get entries from store")?;
 
-    let from_path: PathBuf = matches
-        .value_of("from_path")
-        .ok_or_else(|| Context::new("can not get from_path from args"))?
-        .into();
+    if entries.is_empty() {
+        println!("no active todos");
+        return Ok(());
+    }
 
-    let old_store = CsvStore::default().with_datafile_path(from_path);
-    let new_store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_titles(row![b->"ID", b->"Age", b->"Due", b->"Description"]);
+
+    for (index, entry) in entries.into_iter().enumerate() {
+        table.add_row(row![
+            index + 1,
+            format_duration(entry.age()),
+            format_timestamp(entry.metadata.due),
+            format!("{}", entry),
+        ]);
+    }
+
+    table.printstd();
+
+    Ok(())
+}
+
+fn run_migrate(opt: &Opt, sub_opt: &MigrateSubCommandOpts) -> Result<(), Error> {
+    let old_store = SqliteStore::default()
+        .with_datafile_path(sub_opt.from_path.clone())
         .open()?;
 
-    let entries = old_store
-        .get_entries(project)
-        .context("can not get entries from old store")?;
+    let new_store = CsvStore2::open(&opt.datadir);
 
-    for entry in entries {
-        trace!("entry: {:#?}", entry);
+    let projects = if sub_opt.migrate_all {
+        old_store
+            .get_projects()
+            .context("can not get projects from old store")?
+    } else {
+        vec![opt.project.clone()]
+    };
 
-        new_store
-            .add_entry(entry)
-            .context("can not add entry to new store")?;
+    for project in projects {
+        let entries = old_store
+            .get_entries(&project)
+            .context("can not get entries from old store")?;
+
+        for entry in entries {
+            trace!("entry: {:#?}", entry);
+
+            let new_entry: Entry = entry.into();
+
+            new_store
+                .add_entry(Entry {
+                    metadata: Metadata {
+                        last_change: Utc::now(),
+                        ..new_entry.metadata
+                    },
+                    ..new_entry
+                })
+                .context("can not add entry to new store")?;
+        }
     }
 
     Ok(())
 }
 
-fn run_projects(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
+fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
 
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
+    let old_entry = store
+        .get_entry_by_id(sub_opt.entry_id, &opt.project)
+        .context("can not get entry")?;
 
-    let mut projects = store
-        .get_projects()
-        .context("can not get projects from store")?;
+    let new_entry = Entry {
+        text: old_entry.text.clone(),
+        metadata: Metadata {
+            project: sub_opt.target_project.clone(),
+            last_change: Utc::now(),
+            ..old_entry.metadata.clone()
+        },
+    };
 
-    projects.sort();
-
-    println!("{}", projects.join("\n"));
+    store
+        .update_entry(&old_entry, new_entry)
+        .context("can not update entry")?;
 
     Ok(())
 }
 
-fn run_move(matches: &ArgMatches) -> Result<(), Error> {
-    let datafile_path: PathBuf = matches
-        .value_of("datafile_path")
-        .ok_or_else(|| Context::new("can not get datafile_path from args"))?
-        .into();
+fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
 
-    let project = matches.value_of("project");
+    let project = opt.project.clone();
 
-    let entry_id = value_t!(matches, "entry_id", usize).context("can not get entry_id from args")?;
+    match sub_opt.entry_id {
+        Some(entry_id) => {
+            let entry = store
+                .get_entry_by_id(entry_id, &project)
+                .context("can not get entry")?;
+            println!("{}", entry.to_string());
+        }
 
-    let target_project = matches.value_of("target_project").map(str::to_string);
+        None => {
+            if sub_opt.no_done {
+                let entries = store
+                    .get_active_entries(&project)
+                    .context("can not get entries from store")?;
 
-    let store = SqliteStore::default()
-        .with_datafile_path(datafile_path)
-        .open()?;
+                println!("{}", entries);
+            } else {
+                let entries = store
+                    .get_entries(&project)
+                    .context("can not get entries from store")?;
+
+                println!("{}", entries);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
+
+    let projects = store
+        .get_projects()
+        .context("can not get projects from store")?;
+
+    let mut projects: Vec<_> = projects
+        .iter()
+        .map(|project| {
+            let active_count = store.get_active_count(&project).ok().unwrap_or_default();
+
+            let done_count = store.get_done_count(&project).ok().unwrap_or_default();
+
+            let count = store.get_count(&project).ok().unwrap_or_default();
+
+            (project, active_count, done_count, count)
+        })
+        .filter(|(_, active_count, ..)| sub_opt.print_inactive || active_count != &0)
+        .collect();
+
+    projects.sort();
+
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_titles(row![b->"Project", b->"Active", b->"Done", b->"Total"]);
+
+    for entry in projects {
+        let project = entry.0;
+        let active_count = entry.1;
+        let done_count = entry.2;
+        let count = entry.3;
+
+        table.add_row(row![project, active_count, done_count, count]);
+    }
+
+    let active_count = store.get_active_count("%").ok().unwrap_or_default();
+    let done_count = store.get_done_count("%").ok().unwrap_or_default();
+    let count = store.get_count("%").ok().unwrap_or_default();
+    table.add_row(row!["", "------", "----", "-----"]);
+    table.add_row(row!["", b->active_count,
+b->done_count, b->count]);
+
+    table.printstd();
+
+    Ok(())
+}
+
+fn run_cleanup(opt: &Opt) -> Result<(), Error> {
+    CsvStore2::open(&opt.datadir).run_cleanup()
+}
+
+fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
+    let from_store = CsvStore2::open(&sub_opt.from_path);
+    let new_store = CsvStore2::open(&opt.datadir);
+
+    let projects = if sub_opt.import_all {
+        from_store
+            .get_projects()
+            .context("can not get projects from old store")?
+    } else {
+        vec![opt.project.clone()]
+    };
+
+    for project in projects {
+        let entries = from_store
+            .get_entries(&project)
+            .context("can not get entries from old store")?;
+
+        for entry in entries {
+            trace!("entry: {:#?}", entry);
+
+            let new_entry = Entry {
+                metadata: Metadata {
+                    last_change: Utc::now(),
+                    ..entry.metadata
+                },
+                ..entry
+            };
+
+            new_store
+                .add_entry(new_entry)
+                .context("can not add entry to new store")?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore2::open(&opt.datadir);
 
     let old_entry = store
-        .get_entry_by_id(entry_id, project)
+        .get_entry_by_id(sub_opt.entry_id, &opt.project)
         .context("can not get entry")?;
 
     let new_entry = Entry {
-        project_name: target_project,
-        ..old_entry.clone()
+        text: old_entry.text.clone(),
+        metadata: Metadata {
+            due: Some(sub_opt.due_date),
+            last_change: Utc::now(),
+            ..old_entry.metadata.clone()
+        },
     };
 
     store

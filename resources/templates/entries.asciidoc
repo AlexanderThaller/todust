@@ -20,9 +20,14 @@
 === {{ project }}
 {% for entry in entries -%}
 ==== {{ entry.text | single_line | truncate(length=100) }}
-Project:: {{ entry.project_name }}
-UUID:: {{ entry.uuid }}
-Started:: {{ entry.started }}
+Project:: {{ entry.metadata.project }}
+UUID:: {{ entry.metadata.uuid }}
+Last Change:: {{ entry.metadata.last_change }}
+Started:: {{ entry.metadata.started }}
+Active Duration:: {{ entry.metadata.started | format_duration_since }}
+{% if entry.metadata.due is some %}
+Due:: {{ entry.metadata.due }}
+{% endif %}
 
 ====
 {{ entry.text | lines | trim }}
@@ -38,9 +43,13 @@ Started:: {{ entry.started }}
 === {{ project }}
 {% for entry in entries -%}
 ==== {{ entry.text | single_line | truncate(length=100) }}
-Project:: {{ entry.project_name }}
-UUID:: {{ entry.uuid }}
-Started:: {{ entry.started }}
+Project:: {{ entry.metadata.project }}
+UUID:: {{ entry.metadata.uuid }}
+Last Change:: {{ entry.metadata.last_change }}
+Started:: {{ entry.metadata.started }}
+{% if entry.metadata.due is some %}
+Due:: {{ entry.metadata.due }}
+{% endif %}
 
 ====
 {{ entry.text | lines | trim }}

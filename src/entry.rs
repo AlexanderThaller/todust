@@ -1,22 +1,39 @@
+use crate::{
+    entry_v2::{
+        Entry as EntryV2,
+        Metadata as MetadataV2,
+    },
+    helper,
+};
 use chrono::{
     DateTime,
     Utc,
 };
-use failure::Error;
+use failure::{
+    bail,
+    Error,
+};
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::value::{
     to_value,
     Value,
 };
-use std::collections::HashMap;
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
+use std::{
+    collections::{
+        BTreeMap,
+        BTreeSet,
+        HashMap,
+    },
+    fmt,
+    iter::FromIterator,
 };
-use std::fmt;
-use std::iter::FromIterator;
-use tera::Result as TeraResult;
 use tera::{
+    try_get_value,
     Context,
+    Result as TeraResult,
     Tera,
 };
 use uuid::Uuid;
@@ -25,7 +42,7 @@ use uuid::Uuid;
 pub struct Entry {
     // FIXME: Rename project_name to project.
     pub started: DateTime<Utc>,
-    pub project_name: Option<String>,
+    pub project_name: String,
     pub finished: Option<DateTime<Utc>>,
     pub uuid: Uuid,
     pub text: String,
@@ -34,7 +51,7 @@ pub struct Entry {
 impl Default for Entry {
     fn default() -> Self {
         Self {
-            project_name: None,
+            project_name: "default".to_owned(),
             started: Utc::now(),
             finished: None,
             uuid: Uuid::new_v4(),
@@ -44,7 +61,7 @@ impl Default for Entry {
 }
 
 impl Entry {
-    pub fn with_project(self, project_name: Option<String>) -> Self {
+    pub fn with_project(self, project_name: String) -> Self {
         Self {
             project_name,
             ..self
@@ -68,8 +85,24 @@ impl Entry {
     }
 }
 
+impl Into<EntryV2> for Entry {
+    fn into(self) -> EntryV2 {
+        EntryV2 {
+            text: self.text,
+            metadata: MetadataV2 {
+                started: self.started,
+                finished: self.finished,
+                project: self.project_name,
+                uuid: self.uuid,
+                last_change: Utc::now(),
+                due: None,
+            },
+        }
+    }
+}
+
 impl fmt::Display for Entry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let line = self
             .text
             .replace("\n", " ")
@@ -81,7 +114,7 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct Entries {
     entries: BTreeSet<Entry>,
 }
@@ -100,7 +133,7 @@ impl Entries {
     }
 
     pub fn get_active(self) -> Entries {
-        self.into_iter().filter(|entry| entry.is_active()).collect()
+        self.into_iter().filter(Entry::is_active).collect()
     }
 
     pub fn entry_by_id(self, id: usize) -> Result<Entry, Error> {
@@ -114,40 +147,46 @@ impl Entries {
 
         Ok(entry)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 impl fmt::Display for Entries {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut active: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
         let mut done: BTreeMap<&str, BTreeSet<&Entry>> = BTreeMap::default();
 
         for entry in &self.entries {
             if entry.finished.is_none() {
                 active
-                    .entry(entry.project_name.as_ref().unwrap())
+                    .entry(&entry.project_name)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             } else {
-                done.entry(entry.project_name.as_ref().unwrap())
+                done.entry(&entry.project_name)
                     .or_insert_with(BTreeSet::default)
                     .insert(entry);
             }
         }
 
         let mut context = Context::new();
-        context.add("active", &active);
+        context.insert("active", &active);
 
         if !done.is_empty() {
-            context.add("done", &done);
+            context.insert("done", &done);
         }
 
         let mut tera = Tera::default();
         tera.add_raw_template(
             "entries.asciidoc",
             include_str!("../resources/templates/entries.asciidoc"),
-        ).expect("can not compile entries.asciidoc template");
+        )
+        .expect("can not compile entries.asciidoc template");
         tera.register_filter("single_line", single_line);
         tera.register_filter("lines", lines);
+        tera.register_filter("format_duration_since", format_duration_since);
 
         let rendered = tera
             .render("entries.asciidoc", &context)
@@ -183,6 +222,7 @@ impl<'a> IntoIterator for &'a Entries {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     let s = try_get_value!("single_line", "value", String, value);
 
@@ -191,6 +231,7 @@ fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     Ok(to_value(&s).unwrap())
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     let mut out = String::new();
 
@@ -211,4 +252,12 @@ fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
     }
 
     Ok(to_value(&out).unwrap())
+}
+
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
+fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let started = try_get_value!("format_duration_since", "value", DateTime<Utc>, value);
+    let duration = Utc::now().signed_duration_since(started);
+
+    Ok(to_value(&helper::format_duration(duration)).unwrap())
 }
