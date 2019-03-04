@@ -1,6 +1,7 @@
 use crate::entry::{
     Entries,
     Entry,
+    Metadata,
 };
 use failure::Error;
 
@@ -15,4 +16,8 @@ pub trait Store {
     fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error>;
     fn get_projects(&self) -> Result<Vec<String>, Error>;
     fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error>;
+    fn get_metadata(&self) -> Result<Vec<Metadata>, Error>;
+    fn remove_metadata(&self, metadata: &Metadata) -> Result<(), Error>;
+    fn add_metadata(&self, metadata: Metadata) -> Result<(), Error>;
+    fn run_cleanup(&self) -> Result<(), Error>;
 }

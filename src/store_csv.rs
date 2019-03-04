@@ -1,11 +1,11 @@
 use crate::{
-    entry_v2::{
+    entry::{
         Entries,
         Entry,
         Metadata,
     },
     helper::confirm,
-    store_v2::Store,
+    store::Store,
 };
 use chrono::Utc;
 use csv::{
@@ -49,7 +49,7 @@ pub struct CsvStore {
 }
 
 impl CsvStore {
-    pub fn open<P: AsRef<Path>>(datadir: P) -> Self {
+    pub(crate) fn open<P: AsRef<Path>>(datadir: P) -> Self {
         Self {
             datadir: datadir.as_ref().to_path_buf(),
         }

@@ -33,7 +33,7 @@ pub struct Opt {
         raw(possible_values = r#"&["trace", "debug", "info", "warn", "error"]"#),
         env = "TODUST_LOG_LEVEL"
     )]
-    pub log_level: LevelFilter,
+    pub(crate) log_level: LevelFilter,
 
     /// Path to the datadir
     #[structopt(
@@ -44,7 +44,7 @@ pub struct Opt {
         raw(default_value = "&DEFAULT_DATADIR_STRING"),
         env = "TODUST_DATADIR"
     )]
-    pub datadir: PathBuf,
+    pub(crate) datadir: PathBuf,
 
     /// Which project to save the entry under
     #[structopt(
@@ -55,11 +55,11 @@ pub struct Opt {
         default_value = "default",
         env = "TODUST_PROJECT"
     )]
-    pub project: String,
+    pub(crate) project: String,
 
     /// Subcommand to run
     #[structopt(subcommand)]
-    pub cmd: SubCommand,
+    pub(crate) cmd: SubCommand,
 }
 
 /// Available subcommands in the application
@@ -84,10 +84,6 @@ pub enum SubCommand {
     /// Open text of entry in editor to edit it
     #[structopt(name = "edit")]
     Edit(EditSubCommandOpts),
-
-    /// Migrate old entries to new format
-    #[structopt(name = "migrate")]
-    Migrate(MigrateSubCommandOpts),
 
     /// Move entry from current project to target project
     #[structopt(name = "move")]
@@ -116,7 +112,7 @@ pub enum SubCommand {
 pub struct AddSubCommandOpts {
     /// Text of the entry
     #[structopt(index = 1, value_name = "text")]
-    pub text: Option<String>,
+    pub(crate) text: Option<String>,
 }
 
 /// Options for print subcommand
@@ -124,11 +120,11 @@ pub struct AddSubCommandOpts {
 pub struct PrintSubCommandOpts {
     /// Id of the task. If none is given all tasks will be printed
     #[structopt(index = 1, value_name = "id")]
-    pub entry_id: Option<usize>,
+    pub(crate) entry_id: Option<usize>,
 
     /// Dont print done tasks if specified
     #[structopt(short = "n", long = "no_done")]
-    pub no_done: bool,
+    pub(crate) no_done: bool,
 }
 
 /// Options for done subcommand
@@ -136,7 +132,7 @@ pub struct PrintSubCommandOpts {
 pub struct DoneSubCommandOpts {
     /// Id of the task that should be marked as done
     #[structopt(index = 1, value_name = "id")]
-    pub entry_id: usize,
+    pub(crate) entry_id: usize,
 }
 
 /// Options for edit subcommand
@@ -144,24 +140,11 @@ pub struct DoneSubCommandOpts {
 pub struct EditSubCommandOpts {
     /// Id of the task
     #[structopt(index = 1, value_name = "id")]
-    pub entry_id: usize,
+    pub(crate) entry_id: usize,
 
     /// Update started time of todo to current time if specified
     #[structopt(short = "u", long = "update_time")]
-    pub update_time: bool,
-}
-
-/// Options for migrate subcommand
-#[derive(StructOpt, Debug)]
-pub struct MigrateSubCommandOpts {
-    /// Path of the file/folder from which to migrate from
-    #[structopt(index = 1, value_name = "path")]
-    pub from_path: PathBuf,
-
-    /// Migrate all projects to new structure instead of just the current
-    /// project
-    #[structopt(short = "a", long = "migrate_all")]
-    pub migrate_all: bool,
+    pub(crate) update_time: bool,
 }
 
 /// Options for move subcommand
@@ -169,11 +152,11 @@ pub struct MigrateSubCommandOpts {
 pub struct MoveSubCommandOpts {
     /// Id of the task
     #[structopt(index = 1, value_name = "id")]
-    pub entry_id: usize,
+    pub(crate) entry_id: usize,
 
     /// Target project name
     #[structopt(index = 2, value_name = "project")]
-    pub target_project: String,
+    pub(crate) target_project: String,
 }
 
 /// Options for projects subcommand
@@ -182,7 +165,7 @@ pub struct ProjectsSubCommandOpts {
     /// Also print out projects without active todos. If not specified inactive
     /// projects will not be listed
     #[structopt(short = "i", long = "print_inactive")]
-    pub print_inactive: bool,
+    pub(crate) print_inactive: bool,
 }
 
 /// Options for import subcommand
@@ -190,11 +173,11 @@ pub struct ProjectsSubCommandOpts {
 pub struct ImportSubCommandOpts {
     /// Path of the file/folder from which to import from
     #[structopt(index = 1, value_name = "path")]
-    pub from_path: PathBuf,
+    pub(crate) from_path: PathBuf,
 
     /// Import all projects instead of just the current project
     #[structopt(short = "a", long = "import_all")]
-    pub import_all: bool,
+    pub(crate) import_all: bool,
 }
 
 /// Options for due subcommand
@@ -202,9 +185,9 @@ pub struct ImportSubCommandOpts {
 pub struct DueSubCommandOpts {
     /// Id of the task for which the due date should be set
     #[structopt(index = 1, value_name = "id")]
-    pub entry_id: usize,
+    pub(crate) entry_id: usize,
 
     /// When the task is due. Has to be date in format 2019-12-24
     #[structopt(index = 2, value_name = "due_date")]
-    pub due_date: NaiveDate,
+    pub(crate) due_date: NaiveDate,
 }
