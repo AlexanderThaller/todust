@@ -22,7 +22,7 @@ lazy_static! {
     raw(settings = "&[SubcommandRequiredElseHelp]"),
     raw(global_settings = "&[ColoredHelp, VersionlessSubcommands, NextLineHelp, GlobalVersion]")
 )]
-pub struct Opt {
+pub(crate) struct Opt {
     /// Loglevel to run under
     #[structopt(
         short = "L",
@@ -64,7 +64,7 @@ pub struct Opt {
 
 /// Available subcommands in the application
 #[derive(StructOpt, Debug)]
-pub enum SubCommand {
+pub(crate) enum SubCommand {
     /// Add a new todo entry. If no text is given $EDITOR will be launched.
     #[structopt(name = "add")]
     Add(AddSubCommandOpts),
@@ -109,7 +109,7 @@ pub enum SubCommand {
 
 /// Options for the add subcommand
 #[derive(StructOpt, Debug)]
-pub struct AddSubCommandOpts {
+pub(crate) struct AddSubCommandOpts {
     /// Text of the entry
     #[structopt(index = 1, value_name = "text")]
     pub(crate) text: Option<String>,
@@ -117,7 +117,7 @@ pub struct AddSubCommandOpts {
 
 /// Options for print subcommand
 #[derive(StructOpt, Debug)]
-pub struct PrintSubCommandOpts {
+pub(crate) struct PrintSubCommandOpts {
     /// Id of the task. If none is given all tasks will be printed
     #[structopt(index = 1, value_name = "id")]
     pub(crate) entry_id: Option<usize>,
@@ -129,7 +129,7 @@ pub struct PrintSubCommandOpts {
 
 /// Options for done subcommand
 #[derive(StructOpt, Debug)]
-pub struct DoneSubCommandOpts {
+pub(crate) struct DoneSubCommandOpts {
     /// Id of the task that should be marked as done
     #[structopt(index = 1, value_name = "id")]
     pub(crate) entry_id: usize,
@@ -137,7 +137,7 @@ pub struct DoneSubCommandOpts {
 
 /// Options for edit subcommand
 #[derive(StructOpt, Debug)]
-pub struct EditSubCommandOpts {
+pub(crate) struct EditSubCommandOpts {
     /// Id of the task
     #[structopt(index = 1, value_name = "id")]
     pub(crate) entry_id: usize,
@@ -149,7 +149,7 @@ pub struct EditSubCommandOpts {
 
 /// Options for move subcommand
 #[derive(StructOpt, Debug)]
-pub struct MoveSubCommandOpts {
+pub(crate) struct MoveSubCommandOpts {
     /// Id of the task
     #[structopt(index = 1, value_name = "id")]
     pub(crate) entry_id: usize,
@@ -161,7 +161,7 @@ pub struct MoveSubCommandOpts {
 
 /// Options for projects subcommand
 #[derive(StructOpt, Debug)]
-pub struct ProjectsSubCommandOpts {
+pub(crate) struct ProjectsSubCommandOpts {
     /// Also print out projects without active todos. If not specified inactive
     /// projects will not be listed
     #[structopt(short = "i", long = "print_inactive")]
@@ -170,7 +170,7 @@ pub struct ProjectsSubCommandOpts {
 
 /// Options for import subcommand
 #[derive(StructOpt, Debug)]
-pub struct ImportSubCommandOpts {
+pub(crate) struct ImportSubCommandOpts {
     /// Path of the file/folder from which to import from
     #[structopt(index = 1, value_name = "path")]
     pub(crate) from_path: PathBuf,
@@ -182,7 +182,7 @@ pub struct ImportSubCommandOpts {
 
 /// Options for due subcommand
 #[derive(StructOpt, Debug)]
-pub struct DueSubCommandOpts {
+pub(crate) struct DueSubCommandOpts {
     /// Id of the task for which the due date should be set
     #[structopt(index = 1, value_name = "id")]
     pub(crate) entry_id: usize,

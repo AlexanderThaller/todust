@@ -8,6 +8,7 @@ use crate::{
     entry::{
         Entry,
         Metadata,
+        ProjectCount,
     },
     helper::{
         format_duration,
@@ -154,18 +155,18 @@ editor",
             metadata: Metadata {
                 started: Utc::now(),
                 last_change: Utc::now(),
-                ..old_entry.metadata.clone()
+                ..old_entry.metadata
             },
         }
     } else {
         Entry {
             text: new_text,
-            ..old_entry.clone()
+            ..old_entry
         }
     };
 
     store
-        .update_entry(&old_entry, new_entry)
+        .update_entry(new_entry)
         .context("can not update entry")?;
 
     Ok(())
@@ -217,9 +218,7 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
         },
     };
 
-    store
-        .update_entry(&old_entry, new_entry)
-        .context("can not update entry")?;
+    store.add_entry(new_entry).context("can not add entry")?;
 
     Ok(())
 }
@@ -260,45 +259,42 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
 fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore::open(&opt.datadir);
 
-    let projects = store
-        .get_projects()
-        .context("can not get projects from store")?;
+    let mut projects_count = store
+        .get_projects_count()
+        .context("can not get projects count from store")?
+        .into_iter()
+        .filter(|entry| entry.active_count != 0 || sub_opt.print_inactive)
+        .collect::<Vec<_>>();
 
-    let mut projects: Vec<_> = projects
-        .iter()
-        .map(|project| {
-            let active_count = store.get_active_count(&project).ok().unwrap_or_default();
-
-            let done_count = store.get_done_count(&project).ok().unwrap_or_default();
-
-            let count = store.get_count(&project).ok().unwrap_or_default();
-
-            (project, active_count, done_count, count)
-        })
-        .filter(|(_, active_count, ..)| sub_opt.print_inactive || active_count != &0)
-        .collect();
-
-    projects.sort();
+    projects_count.sort();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
     table.set_titles(row![b->"Project", b->"Active", b->"Done", b->"Total"]);
 
-    for entry in projects {
-        let project = entry.0;
-        let active_count = entry.1;
-        let done_count = entry.2;
-        let count = entry.3;
+    for entry in &projects_count {
+        trace!("entry written to table: {:#?}", entry);
 
-        table.add_row(row![project, active_count, done_count, count]);
+        table.add_row(row![
+            entry.project,
+            entry.active_count,
+            entry.done_count,
+            entry.total_count
+        ]);
     }
 
-    let active_count = store.get_active_count("%").ok().unwrap_or_default();
-    let done_count = store.get_done_count("%").ok().unwrap_or_default();
-    let count = store.get_count("%").ok().unwrap_or_default();
-    table.add_row(row!["", "------", "----", "-----"]);
-    table.add_row(row!["", b->active_count,
-b->done_count, b->count]);
+    if !projects_count.is_empty() {
+        table.add_row(row!["", "------", "----", "-----"]);
+    }
+
+    let total = store
+        .get_projects_count()
+        .context("can not get projects count from store")?
+        .into_iter()
+        .fold(ProjectCount::default(), |acc, x| acc + x);
+
+    table.add_row(row![b->"Total", b->total.active_count,
+b->total.done_count, b->total.total_count]);
 
     table.printstd();
 
@@ -354,17 +350,15 @@ fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
         .context("can not get entry")?;
 
     let new_entry = Entry {
-        text: old_entry.text.clone(),
+        text: old_entry.text,
         metadata: Metadata {
             due: Some(sub_opt.due_date),
             last_change: Utc::now(),
-            ..old_entry.metadata.clone()
+            ..old_entry.metadata
         },
     };
 
-    store
-        .update_entry(&old_entry, new_entry)
-        .context("can not update entry")?;
+    store.add_entry(new_entry).context("can not add entry")?;
 
     Ok(())
 }

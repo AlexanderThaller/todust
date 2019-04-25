@@ -15,7 +15,7 @@ use text_io::{
     try_scan,
 };
 
-pub fn confirm(message: &str, default: bool) -> Result<bool, Error> {
+pub(crate) fn confirm(message: &str, default: bool) -> Result<bool, Error> {
     let default_text = if default { "Y/n" } else { "N/y" };
 
     println!("{}\n({}): ", message, default_text);
@@ -28,7 +28,7 @@ pub fn confirm(message: &str, default: bool) -> Result<bool, Error> {
     }
 }
 
-pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
+pub(crate) fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     use std::{
         env,
         io::{
@@ -78,7 +78,7 @@ pub fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     Ok(string)
 }
 
-pub fn format_duration(duration: Duration) -> String {
+pub(crate) fn format_duration(duration: Duration) -> String {
     if duration < Duration::minutes(1) {
         return format!("{}s", duration.num_seconds());
     }
@@ -94,7 +94,7 @@ pub fn format_duration(duration: Duration) -> String {
     format!("{}d", duration.num_days())
 }
 
-pub fn format_timestamp(time_stamp: Option<NaiveDate>) -> String {
+pub(crate) fn format_timestamp(time_stamp: Option<NaiveDate>) -> String {
     if time_stamp.is_none() {
         return "-".to_string();
     }

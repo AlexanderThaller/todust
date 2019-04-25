@@ -4,6 +4,7 @@ use chrono::{
     NaiveDate,
     Utc,
 };
+use core::ops::AddAssign;
 use failure::{
     bail,
     Error,
@@ -24,6 +25,7 @@ use std::{
     },
     fmt,
     iter::FromIterator,
+    ops::Add,
 };
 use tera::{
     try_get_value,
@@ -34,7 +36,7 @@ use tera::{
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
-pub struct Metadata {
+pub(crate) struct Metadata {
     pub(crate) last_change: DateTime<Utc>,
     pub(crate) due: Option<NaiveDate>,
     pub(crate) started: DateTime<Utc>,
@@ -56,8 +58,14 @@ impl Default for Metadata {
     }
 }
 
+impl Metadata {
+    pub(crate) fn is_active(&self) -> bool {
+        self.finished.is_none()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
-pub struct Entry {
+pub(crate) struct Entry {
     pub(crate) metadata: Metadata,
     pub(crate) text: String,
 }
@@ -73,7 +81,7 @@ impl Default for Entry {
 
 impl Entry {
     pub(crate) fn is_active(&self) -> bool {
-        self.metadata.finished.is_none()
+        self.metadata.is_active()
     }
 
     pub(crate) fn age(&self) -> ::chrono::Duration {
@@ -98,9 +106,15 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
-pub struct Entries {
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
+pub(crate) struct Entries {
     pub(crate) entries: BTreeSet<Entry>,
+}
+
+impl From<BTreeSet<Entry>> for Entries {
+    fn from(entries: BTreeSet<Entry>) -> Self {
+        Self { entries }
+    }
 }
 
 impl Entries {
@@ -126,6 +140,21 @@ impl Entries {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    pub(crate) fn latest_entries(self) -> Self {
+        let mut latest = BTreeMap::new();
+
+        for entry in self.entries {
+            latest.insert(entry.metadata.uuid, entry);
+        }
+
+        let entries = latest
+            .into_iter()
+            .map(|(_, entry)| entry)
+            .collect::<BTreeSet<Entry>>();
+
+        entries.into()
     }
 }
 
@@ -236,4 +265,36 @@ fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<
     let duration = Utc::now().signed_duration_since(started);
 
     Ok(to_value(&helper::format_duration(duration)).unwrap())
+}
+
+#[derive(Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
+pub(crate) struct ProjectCount {
+    pub(crate) project: String,
+    pub(crate) active_count: usize,
+    pub(crate) done_count: usize,
+    pub(crate) total_count: usize,
+}
+
+impl Add for ProjectCount {
+    type Output = ProjectCount;
+
+    fn add(self, other: ProjectCount) -> ProjectCount {
+        Self {
+            project: other.project,
+            active_count: self.active_count + other.active_count,
+            done_count: self.done_count + other.done_count,
+            total_count: self.total_count + other.total_count,
+        }
+    }
+}
+
+impl AddAssign for ProjectCount {
+    fn add_assign(&mut self, other: ProjectCount) {
+        *self = Self {
+            project: other.project,
+            active_count: self.active_count + other.active_count,
+            done_count: self.done_count + other.done_count,
+            total_count: self.total_count + other.total_count,
+        }
+    }
 }

@@ -3,6 +3,7 @@ use crate::{
         Entries,
         Entry,
         Metadata,
+        ProjectCount,
     },
     helper::confirm,
     store::Store,
@@ -26,6 +27,7 @@ use log::{
 };
 use std::{
     collections::{
+        BTreeMap,
         BTreeSet,
         HashMap,
     },
@@ -44,7 +46,7 @@ use std::{
 };
 use uuid::Uuid;
 
-pub struct CsvStore {
+pub(crate) struct CsvStore {
     datadir: PathBuf,
 }
 
@@ -85,18 +87,10 @@ impl CsvStore {
         entry_file
     }
 
-    fn get_active_index_filename(&self) -> PathBuf {
+    fn get_index_filename(&self) -> PathBuf {
         let mut index_file = PathBuf::new();
         index_file.push(&self.datadir);
-        index_file.push("active.csv");
-
-        index_file
-    }
-
-    fn get_done_index_filename(&self) -> PathBuf {
-        let mut index_file = PathBuf::new();
-        index_file.push(&self.datadir);
-        index_file.push("done.csv");
+        index_file.push("index.csv");
 
         index_file
     }
@@ -114,7 +108,9 @@ impl CsvStore {
         Ok(())
     }
 
-    fn add_entry_to_index(&self, index_path: PathBuf, entry: &Metadata) -> Result<(), Error> {
+    fn add_entry_to_index(&self, entry: &Metadata) -> Result<(), Error> {
+        let index_path = self.get_index_filename();
+
         let mut builder = WriterBuilder::new();
         // We only want to write the header if the file does not exist yet so we can
         // just append new entries to the existing file without having multiple
@@ -136,57 +132,6 @@ impl CsvStore {
         Ok(())
     }
 
-    fn add_entry_to_active_index(&self, entry: &Metadata) -> Result<(), Error> {
-        let index_path = self.get_active_index_filename();
-        self.add_entry_to_index(index_path, entry)
-    }
-
-    fn add_entry_to_done_index(&self, entry: &Metadata) -> Result<(), Error> {
-        let index_path = self.get_done_index_filename();
-        self.add_entry_to_index(index_path, entry)
-    }
-
-    fn remove_entry_from_index(&self, index_path: PathBuf, entry: &Metadata) -> Result<(), Error> {
-        let entries = {
-            let mut rdr = ReaderBuilder::new()
-                .from_path(&index_path)
-                .context("can not open index for reading")?;
-
-            rdr.deserialize()
-                .collect::<Result<Vec<Metadata>, CsvError>>()
-                .context("can not deserialize metadata csv from index")?
-                .into_iter()
-                .filter(|index_entry| index_entry.uuid != entry.uuid)
-                .collect::<Vec<_>>()
-        };
-
-        if entries.is_empty() {
-            fs::remove_file(&index_path).context("can not remove file")?;
-        } else {
-            let mut wtr = WriterBuilder::new()
-                .from_path(&index_path)
-                .context("can not open index for writing")?;
-
-            entries
-                .iter()
-                .map(|entry| wtr.serialize(entry))
-                .collect::<Result<(), CsvError>>()
-                .context("can not serialize entries to file")?;
-        };
-
-        Ok(())
-    }
-
-    fn remove_entry_from_active_index(&self, entry: &Metadata) -> Result<(), Error> {
-        let index_path = self.get_active_index_filename();
-        self.remove_entry_from_index(index_path, entry)
-    }
-
-    fn remove_entry_from_done_index(&self, entry: &Metadata) -> Result<(), Error> {
-        let index_path = self.get_done_index_filename();
-        self.remove_entry_from_index(index_path, entry)
-    }
-
     fn get_entry_for_metadata(&self, metadata: Metadata) -> Result<Entry, Error> {
         let entry_file = self.get_entry_filename(&metadata);
 
@@ -199,31 +144,16 @@ impl CsvStore {
         Ok(Entry { metadata, text })
     }
 
-    fn remove_entry(&self, entry: &Metadata) -> Result<(), Error> {
-        if entry.finished.is_none() {
-            self.remove_entry_from_active_index(entry)
-                .context("can not add entry to active index")?;
-        } else {
-            self.remove_entry_from_done_index(entry)
-                .context("can not add entry to done index")?;
-        }
+    fn get_projects_from_index(&self) -> Result<Vec<String>, Error> {
+        let index_path = self.get_index_filename();
 
-        Ok(())
-    }
-
-    fn get_projects_from_index(&self, index_path: PathBuf) -> Result<Vec<String>, Error> {
-        let mut rdr = ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(index_path)
-            .context("can not build csv reader")?;
-
-        let projects = rdr
-            .deserialize()
-            .collect::<Result<Vec<Metadata>, CsvError>>()
-            .context("can not deserialize csv for active entries")?
+        let mut projects = self
+            .get_metadata_entries(index_path)?
             .into_iter()
             .map(|metadata| metadata.project)
-            .collect();
+            .collect::<Vec<_>>();
+
+        projects.dedup();
 
         Ok(projects)
     }
@@ -233,118 +163,45 @@ impl CsvStore {
             return Ok(Vec::default());
         }
 
-        let mut rdr = ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(index_path)
-            .context("can not build csv reader")?;
+        let mut csv_reader = ReaderBuilder::new()
+            .from_path(&index_path)
+            .context("can not open index for reading")?;
 
-        let metadata_entries = rdr
+        let raw_entries = csv_reader
             .deserialize()
-            .collect::<Result<Vec<Metadata>, CsvError>>()
+            .collect::<Result<BTreeSet<Metadata>, CsvError>>()
             .context("can not deserialize csv for active entries")?;
+
+        let mut latest_entries = BTreeMap::new();
+        for metadata in raw_entries {
+            latest_entries.insert(metadata.uuid, metadata);
+        }
+
+        let metadata_entries = latest_entries
+            .into_iter()
+            .map(|(_, metadata)| metadata)
+            .collect();
 
         trace!("metadata_entries: {:#?}", metadata_entries);
 
         Ok(metadata_entries)
     }
 
-    fn get_all_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
-        let metadata_entries = {
-            let mut active_metadata_entries = self
-                .get_active_metadata_entries()
-                .context("can not get metadata from active index")?;
-
-            let mut done_metadata_entries = self
-                .get_done_metadata_entries()
-                .context("can not get metadata from active index")?;
-
-            active_metadata_entries.append(&mut done_metadata_entries);
-            active_metadata_entries
-        };
-
-        Ok(metadata_entries)
-    }
-
-    fn get_active_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
-        let index_path = self.get_active_index_filename();
-        let metadata_entries = self.get_metadata_entries(&index_path)?;
-
-        Ok(metadata_entries)
-    }
-
-    fn get_done_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
-        let index_path = self.get_done_index_filename();
-        let metadata_entries = self.get_metadata_entries(&index_path)?;
-
-        Ok(metadata_entries)
-    }
-
     fn add_metadata_to_store(&self, metadata: Metadata) -> Result<(), Error> {
-        match metadata.finished {
-            None => self
-                .add_entry_to_active_index(&metadata)
-                .context("can not add entry to active index")?,
-            Some(_) => self
-                .add_entry_to_done_index(&metadata)
-                .context("can not add entry to done index")?,
-        }
+        self.add_entry_to_index(&metadata)
+            .context("can not add metadata to index")?;
 
         Ok(())
     }
 
     fn cleanup_duplicate_uuids(&self) -> Result<(), Error> {
-        let mut dedup_map: HashMap<Uuid, Metadata> = HashMap::default();
-        let mut seen_map: HashMap<Uuid, usize> = HashMap::default();
+        let metadata = self.get_metadata()?;
 
-        let metadatas = self.get_metadata()?;
-        for metadata in metadatas {
-            *seen_map.entry(metadata.uuid).or_insert(0) += 1;
+        let index_path = self.get_index_filename();
+        fs::remove_file(index_path).context("can not remove old index file")?;
 
-            match dedup_map.get(&metadata.uuid) {
-                None => {
-                    dedup_map.insert(metadata.uuid, metadata);
-                }
-                Some(dedup_metadata) => {
-                    if metadata > *dedup_metadata {
-                        dedup_map.insert(metadata.uuid, metadata);
-                    }
-                }
-            };
-        }
-
-        let duplicate_entries = seen_map
-            .into_iter()
-            .filter(|(uuid, seen_count)| {
-                debug!("seen uuid {}, {} times", uuid, seen_count);
-                *seen_count != 1
-            })
-            .map(|(uuid, _)| uuid)
-            .collect::<Vec<Uuid>>();
-
-        trace!("dedup_map: {:#?}", dedup_map);
-
-        for uuid in duplicate_entries {
-            info!("found duplicated entries for uuid {}", uuid);
-
-            let metadata = &dedup_map[&uuid];
-            self.remove_entry_from_active_index(&metadata)?;
-            self.remove_entry_from_done_index(&metadata)?;
-            self.add_metadata(metadata.clone())?
-        }
-
-        Ok(())
-    }
-
-    fn cleanup_stale_index_entries(&self) -> Result<(), Error> {
-        let metadatas = self.get_metadata()?;
-
-        for metadata in metadatas {
-            let filename = self.get_entry_filename(&metadata);
-
-            if !filename.exists() {
-                info!("removed stale metadata {:?}", metadata);
-                self.remove_metadata(&metadata)?
-            }
+        for entry in metadata {
+            self.add_metadata_to_store(entry)?;
         }
 
         Ok(())
@@ -405,9 +262,6 @@ impl Store for CsvStore {
             bail!("not finishing task then")
         }
 
-        self.remove_entry_from_active_index(&entry.metadata)
-            .context("can not remove entry from active index")?;
-
         let new = Metadata {
             finished: Some(Utc::now()),
             last_change: Utc::now(),
@@ -416,81 +270,46 @@ impl Store for CsvStore {
 
         trace!("new: {:#?}", new);
 
-        self.add_entry_to_done_index(&new)
+        self.add_entry_to_index(&new)
             .context("can not add entry to done index")?;
 
         Ok(())
     }
 
-    fn get_active_count(&self, project: &str) -> Result<usize, Error> {
-        let count = self
-            .get_active_metadata_entries()
-            .context("can not get metadata from active index")?
-            .iter()
-            .filter(|metadata| {
-                if project == "%" {
-                    true
-                } else {
-                    metadata.project == project
-                }
-            })
-            .count();
-
-        Ok(count)
-    }
-
     fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
-        let metadata_entries = self
-            .get_active_metadata_entries()
-            .context("can not get metadata from active index")?;
-
-        let entries = metadata_entries
+        let entries = self
+            .get_entries(project)?
             .into_iter()
-            .filter(|metadata| metadata.project == project)
-            .map(|metadata| self.get_entry_for_metadata(metadata))
-            .collect::<Result<BTreeSet<Entry>, Error>>()
-            .context("can not get entry for metadata")?;
+            .filter(Entry::is_active)
+            .collect();
 
         trace!("entries: {:#?}", entries);
 
-        Ok(Entries { entries })
-    }
-
-    fn get_count(&self, project: &str) -> Result<usize, Error> {
-        let count = self.get_active_count(project)? + self.get_done_count(project)?;
-        Ok(count)
-    }
-
-    fn get_done_count(&self, project: &str) -> Result<usize, Error> {
-        let count = self
-            .get_done_metadata_entries()
-            .context("can not get metadata from active index")?
-            .iter()
-            .filter(|metadata| {
-                if project == "%" {
-                    true
-                } else {
-                    metadata.project == project
-                }
-            })
-            .count();
-
-        Ok(count)
+        Ok(entries)
     }
 
     fn get_entries(&self, project: &str) -> Result<Entries, Error> {
-        let metadata_entries = self.get_all_metadata_entries()?;
+        let index_path = self.get_index_filename();
 
-        let entries = metadata_entries
+        let metadata_entries = self
+            .get_metadata_entries(index_path)
+            .context("can not get metadata from active index")?;
+
+        let raw_entries: Entries = metadata_entries
             .into_iter()
             .filter(|metadata| metadata.project == project)
             .map(|metadata| self.get_entry_for_metadata(metadata))
             .collect::<Result<BTreeSet<Entry>, Error>>()
-            .context("can not get entry for metadata")?;
+            .context("can not get entry for metadata")?
+            .into();
+
+        trace!("raw_entries: {:#?}", raw_entries);
+
+        let entries = raw_entries.latest_entries();
 
         trace!("entries: {:#?}", entries);
 
-        Ok(Entries { entries })
+        Ok(entries)
     }
 
     fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
@@ -503,47 +322,69 @@ impl Store for CsvStore {
         Ok(entry)
     }
 
-    fn get_projects(&self) -> Result<Vec<String>, Error> {
-        let mut active_projects = self
-            .get_projects_from_index(self.get_active_index_filename())
-            .context("can not get active projects")?;
+    fn get_projects_count(&self) -> Result<Vec<ProjectCount>, Error> {
+        let index_path = self.get_index_filename();
+        let metadata = self.get_metadata_entries(index_path)?;
 
-        let mut done_projects = self
-            .get_projects_from_index(self.get_active_index_filename())
-            .context("can not get done projects")?;
+        let mut count: HashMap<String, ProjectCount> = HashMap::default();
 
-        active_projects.append(&mut done_projects);
-        active_projects.sort();
-        active_projects.dedup();
+        for entry in metadata {
+            let old_count = count
+                .entry(entry.project.clone())
+                .or_insert_with(ProjectCount::default);
 
-        trace!("active_projects: {:#?}", active_projects);
+            let (active_count, done_count) = if entry.is_active() { (1, 0) } else { (0, 1) };
 
-        Ok(active_projects)
+            *old_count += ProjectCount {
+                project: entry.project,
+                active_count,
+                done_count,
+                total_count: 1,
+            }
+        }
+
+        trace!("count: {:#?}", count);
+
+        Ok(count.into_iter().map(|(_, count)| count).collect())
     }
 
-    fn update_entry(&self, old: &Entry, new: Entry) -> Result<(), Error> {
-        self.remove_entry(&old.metadata)?;
-        self.add_entry(new)?;
+    fn get_projects(&self) -> Result<Vec<String>, Error> {
+        let projects = self
+            .get_projects_from_index()
+            .context("can not get projects")?;
 
-        Ok(())
+        trace!("projects: {:#?}", projects);
+
+        Ok(projects)
     }
 
     fn get_metadata(&self) -> Result<Vec<Metadata>, Error> {
-        self.get_all_metadata_entries()
+        let index_path = self.get_index_filename();
+        self.get_metadata_entries(index_path)
     }
 
     fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
         self.add_metadata_to_store(metadata)
     }
 
-    fn remove_metadata(&self, metadata: &Metadata) -> Result<(), Error> {
-        self.remove_entry(metadata)
-    }
-
     fn run_cleanup(&self) -> Result<(), Error> {
         self.cleanup_duplicate_uuids()?;
-        self.cleanup_stale_index_entries()?;
+        // TODO: This should remove index entries that dont have an entry file anymore.
+        // self.cleanup_stale_index_entries()?;
         self.cleanup_unreferenced_entry()?;
+
+        Ok(())
+    }
+
+    fn update_entry(&self, entry: Entry) -> Result<(), Error> {
+        self.write_entry_text(&entry)
+            .context("can not write entry text to file")?;
+
+        let index_path = self.get_index_filename();
+        let metadata = self.get_metadata_entries(index_path)?;
+        if !metadata.contains(&entry.metadata) {
+            self.add_metadata(entry.metadata)?;
+        }
 
         Ok(())
     }
