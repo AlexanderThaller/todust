@@ -26,6 +26,10 @@ use log::{
     info,
     trace,
 };
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
 use std::{
     collections::{
         BTreeMap,
@@ -53,10 +57,50 @@ pub(crate) struct CsvStore {
 }
 
 impl CsvStore {
-    pub(crate) fn open<P: AsRef<Path>>(datadir: P) -> Self {
-        Self {
+    pub(crate) fn open<P: AsRef<Path>>(datadir: P) -> Result<Self, Error> {
+        let new = Self {
             datadir: datadir.as_ref().to_path_buf(),
+        };
+
+        let info = new.get_info()?;
+
+        if info.store_version != 1 {
+            bail!("wrong store version")
         }
+
+        Ok(new)
+    }
+
+    fn get_info(&self) -> Result<StoreInfo, Error> {
+        let path = self.info_path();
+
+        if !path.exists() {
+            let info = StoreInfo::default();
+            let data = toml::to_string_pretty(&info)?;
+
+            let mut file = fs::File::create(path)?;
+            file.lock_exclusive()?;
+            file.write_all(data.as_bytes())?;
+
+            return Ok(info);
+        }
+
+        let mut file = fs::File::open(path)?;
+        file.lock_exclusive()?;
+
+        let mut data = Vec::new();
+        file.read_to_end(&mut data)?;
+        let info = toml::from_slice(&data)?;
+
+        Ok(info)
+    }
+
+    fn info_path(&self) -> PathBuf {
+        let mut path = PathBuf::new();
+        path.push(&self.datadir);
+        path.push(".info");
+
+        path
     }
 
     fn get_entry_foldername(&self, entry: &Metadata) -> PathBuf {
@@ -400,5 +444,16 @@ impl Store for CsvStore {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StoreInfo {
+    store_version: usize,
+}
+
+impl Default for StoreInfo {
+    fn default() -> Self {
+        Self { store_version: 1 }
     }
 }

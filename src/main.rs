@@ -103,7 +103,7 @@ fn run() -> Result<(), Error> {
 }
 
 fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let text = if let Some(opt_text) = &sub_opt.text {
         opt_text.clone()
@@ -127,7 +127,7 @@ fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_done(opt: &Opt, sub_opt: &DoneSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
     store.entry_done(sub_opt.entry_id, &opt.project)?;
 
     Ok(())
@@ -138,7 +138,7 @@ fn run_edit(opt: &Opt, sub_opt: &EditSubCommandOpts) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let old_entry = store
         .get_entry_by_id(sub_opt.entry_id, &opt.project)
@@ -173,7 +173,7 @@ editor",
 }
 
 fn run_list(opt: &Opt) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let entries = store
         .get_active_entries(&opt.project)
@@ -203,7 +203,7 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
 }
 
 fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let old_entry = store
         .get_entry_by_id(sub_opt.entry_id, &opt.project)
@@ -224,7 +224,7 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let project = opt.project.clone();
 
@@ -257,7 +257,7 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -302,12 +302,12 @@ b->total.done_count, b->total.total_count]);
 }
 
 fn run_cleanup(opt: &Opt) -> Result<(), Error> {
-    CsvStore::open(&opt.datadir).run_cleanup()
+    CsvStore::open(&opt.datadir)?.run_cleanup()
 }
 
 fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
-    let from_store = CsvStore::open(&sub_opt.from_path);
-    let new_store = CsvStore::open(&opt.datadir);
+    let from_store = CsvStore::open(&sub_opt.from_path)?;
+    let new_store = CsvStore::open(&opt.datadir)?;
 
     let projects = if sub_opt.import_all {
         from_store
@@ -343,7 +343,7 @@ fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir);
+    let store = CsvStore::open(&opt.datadir)?;
 
     let old_entry = store
         .get_entry_by_id(sub_opt.entry_id, &opt.project)
