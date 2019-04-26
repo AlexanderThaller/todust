@@ -19,6 +19,7 @@ use failure::{
     Error,
     ResultExt,
 };
+use fs2::FileExt;
 use glob::glob;
 use log::{
     debug,
@@ -33,6 +34,7 @@ use std::{
     },
     fs::{
         self,
+        File,
         OpenOptions,
     },
     io::{
@@ -95,6 +97,14 @@ impl CsvStore {
         index_file
     }
 
+    fn open_index_file(&self) -> Result<File, Error> {
+        let path = self.get_index_filename();
+        let file = File::open(path).context("can not open index file")?;
+        file.lock_exclusive().context("can not lock index file")?;
+
+        Ok(file)
+    }
+
     fn write_entry_text(&self, entry: &Entry) -> Result<(), Error> {
         let entry_folder = self.get_entry_foldername(&entry.metadata);
         fs::create_dir_all(&entry_folder).context("can not create entry folder")?;
@@ -102,6 +112,7 @@ impl CsvStore {
         let entry_file = self.get_entry_filename(&entry.metadata);
 
         let mut file = fs::File::create(entry_file).context("can not create entry file")?;
+        file.lock_exclusive()?;
         file.write(entry.text.as_bytes())
             .context("can not write entry text to file")?;
 
@@ -123,6 +134,8 @@ impl CsvStore {
             .open(&index_path)
             .context("can not open index_file")?;
 
+        index_file.lock_exclusive()?;
+
         let mut writer = builder.from_writer(index_file);
 
         writer
@@ -136,6 +149,7 @@ impl CsvStore {
         let entry_file = self.get_entry_filename(&metadata);
 
         let mut file = fs::File::open(entry_file).context("can not open entry file")?;
+        file.lock_exclusive()?;
 
         let mut text = String::new();
         file.read_to_string(&mut text)
@@ -163,9 +177,8 @@ impl CsvStore {
             return Ok(Vec::default());
         }
 
-        let mut csv_reader = ReaderBuilder::new()
-            .from_path(&index_path)
-            .context("can not open index for reading")?;
+        let file = self.open_index_file()?;
+        let mut csv_reader = ReaderBuilder::new().from_reader(&file);
 
         let raw_entries = csv_reader
             .deserialize()
