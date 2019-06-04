@@ -15,18 +15,7 @@ use crate::{
         format_timestamp,
         string_from_editor,
     },
-    opt::{
-        AddSubCommandOpts,
-        DoneSubCommandOpts,
-        DueSubCommandOpts,
-        EditSubCommandOpts,
-        ImportSubCommandOpts,
-        MoveSubCommandOpts,
-        Opt,
-        PrintSubCommandOpts,
-        ProjectsSubCommandOpts,
-        SubCommand,
-    },
+    opt::*,
     store::Store,
     store_csv::CsvStore,
 };
@@ -49,6 +38,10 @@ use prettytable::{
 use simplelog::{
     Config,
     TermLogger,
+};
+use std::io::{
+    self,
+    Write,
 };
 use structopt::StructOpt;
 
@@ -257,6 +250,14 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
+    if sub_opt.simple {
+        run_projects_simple(opt, sub_opt)
+    } else {
+        run_projects_normal(opt, sub_opt)
+    }
+}
+
+fn run_projects_normal(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore::open(&opt.datadir)?;
 
     let mut projects_count = store
@@ -297,6 +298,29 @@ fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error
 b->total.done_count, b->total.total_count]);
 
     table.printstd();
+
+    Ok(())
+}
+
+fn run_projects_simple(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir)?;
+
+    let mut projects_count = store
+        .get_projects_count()
+        .context("can not get projects count from store")?
+        .into_iter()
+        .filter(|entry| entry.active_count != 0 || sub_opt.print_inactive)
+        .collect::<Vec<_>>();
+
+    projects_count.sort();
+
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    for entry in projects_count {
+        handle.write_all(entry.project.as_bytes())?;
+        handle.write_all(b"\n")?;
+    }
 
     Ok(())
 }
