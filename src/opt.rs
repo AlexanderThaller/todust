@@ -19,18 +19,18 @@ lazy_static! {
 /// Very basic todo cli tool that supports multiline todos.
 #[derive(StructOpt, Debug)]
 #[structopt(
-    raw(settings = "&[SubcommandRequiredElseHelp]"),
-    raw(global_settings = "&[ColoredHelp, VersionlessSubcommands, NextLineHelp, GlobalVersion]")
+    settings = &[SubcommandRequiredElseHelp],
+    global_settings = &[ColoredHelp, VersionlessSubcommands, NextLineHelp, GlobalVersion]
 )]
 pub(super) struct Opt {
     /// Loglevel to run under
     #[structopt(
         short = "L",
         long = "log_level",
-        raw(global = "true"),
+        global = true,
         value_name = "level",
         default_value = "info",
-        raw(possible_values = r#"&["trace", "debug", "info", "warn", "error"]"#),
+        possible_values = &["trace", "debug", "info", "warn", "error"],
         env = "TODUST_LOG_LEVEL"
     )]
     pub(super) log_level: LevelFilter,
@@ -39,9 +39,9 @@ pub(super) struct Opt {
     #[structopt(
         short = "D",
         long = "datadir",
-        raw(global = "true"),
+        global = true,
         value_name = "path",
-        raw(default_value = "&DEFAULT_DATADIR_STRING"),
+        default_value = "&DEFAULT_DATADIR_STRING",
         env = "TODUST_DATADIR"
     )]
     pub(super) datadir: PathBuf,
@@ -50,7 +50,7 @@ pub(super) struct Opt {
     #[structopt(
         short = "P",
         long = "project",
-        raw(global = "true"),
+        global = true,
         value_name = "project",
         default_value = "default",
         env = "TODUST_PROJECT"

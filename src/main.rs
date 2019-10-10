@@ -35,10 +35,6 @@ use prettytable::{
     row,
     Table,
 };
-use simplelog::{
-    Config,
-    TermLogger,
-};
 use std::io::{
     self,
     Write,
@@ -70,10 +66,13 @@ fn run() -> Result<(), Error> {
 
     // setup logging
     {
-        let mut config = Config::default();
-        config.time_format = Some("%+");
+        let config = simplelog::ConfigBuilder::new()
+            .set_time_format("%+".to_string())
+            .build();
 
-        if let Err(err) = TermLogger::init(opt.log_level, config) {
+        if let Err(err) =
+            simplelog::TermLogger::init(opt.log_level, config, simplelog::TerminalMode::Stderr)
+        {
             eprintln!("can not initialize logger: {}", err);
             ::std::process::exit(1);
         }
