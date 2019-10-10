@@ -6,6 +6,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
 csv = "1"
 failure = "0.1"
 fs2 = "0.4"
@@ -23,15 +24,8 @@ tera = "0.11"
 text_io = "0.1"
 time = "0.1"
 toml = "0.5"
+uuid = { version = "0.7", features = ["serde", "v4"] }
 xdg = "2"
-
-[dependencies.chrono]
-features = ["serde"]
-version = "0.4"
-
-[dependencies.uuid]
-features = ["serde", "v4"]
-version = "0.7"
 
 [profile.release]
 lto = true

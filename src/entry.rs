@@ -87,10 +87,6 @@ impl Entry {
     pub(crate) fn age(&self) -> ::chrono::Duration {
         Utc::now().signed_duration_since(self.metadata.started)
     }
-
-    pub(crate) fn to_string(&self) -> String {
-        format!("{}\n{}", self.metadata.started, self.text)
-    }
 }
 
 impl fmt::Display for Entry {
