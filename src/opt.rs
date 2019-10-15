@@ -109,10 +109,6 @@ pub(super) enum SubCommand {
     /// Take two index files and merge them together into a new index file
     #[structopt(name = "merge-index-files")]
     MergeIndexFiles(MergeIndexFilesSubCommandOpts),
-
-    /// Compact index file so only latest change to a entry will be kept
-    #[structopt(name = "compact-index-file")]
-    CompactIndexFile(CompactIndexFileSubCommandOpts),
 }
 
 /// Options for the add subcommand
@@ -223,12 +219,4 @@ pub(super) struct MergeIndexFilesSubCommandOpts {
     /// Force overwriting output file
     #[structopt(short = "f", long = "force")]
     pub(super) force: bool,
-}
-
-/// Options for compact subcommand
-#[derive(StructOpt, Debug)]
-pub(super) struct CompactIndexFileSubCommandOpts {
-    /// Path to the index file
-    #[structopt(index = 1, value_name = "index_file_path")]
-    pub(super) index_path: PathBuf,
 }

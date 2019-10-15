@@ -114,7 +114,9 @@ impl CsvIndex {
     }
 
     pub(super) fn cleanup_duplicate_uuids(&self) -> Result<(), Error> {
-        let metadata = self.get_latest_metadata_entries()?;
+        let mut metadata = self.get_latest_metadata_entries()?;
+
+        metadata.sort();
 
         let index_path = &self.index_file_path;
         std::fs::remove_file(index_path).context("can not remove old index file")?;
