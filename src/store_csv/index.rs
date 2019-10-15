@@ -88,7 +88,7 @@ impl CsvIndex {
         Ok(entries)
     }
 
-    pub(super) fn get_latest_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
+    pub(crate) fn get_latest_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
         let raw_entries = self.get_metadata_entries()?;
 
         let mut latest_entries = std::collections::BTreeMap::new();

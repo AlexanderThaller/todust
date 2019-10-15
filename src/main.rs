@@ -93,6 +93,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
         SubCommand::Due(sub_opt) => run_due(&opt, sub_opt),
         SubCommand::MergeIndexFiles(sub_opt) => run_merge_index_files(&opt, sub_opt),
+        SubCommand::CompactIndexFile(sub_opt) => run_compact_index_file(&opt, sub_opt),
     }
 }
 
@@ -410,6 +411,28 @@ fn run_merge_index_files(_opt: &Opt, sub_opt: &MergeIndexFilesSubCommandOpts) ->
 
     for entry in merged {
         output_store.add_metadata_to_store(entry)?;
+    }
+
+    Ok(())
+}
+
+fn run_compact_index_file(
+    _opt: &Opt,
+    sub_opt: &CompactIndexFileSubCommandOpts,
+) -> Result<(), Error> {
+    let mut entries = {
+        let index = CsvIndex::new(&sub_opt.index_path);
+        index.get_latest_metadata_entries()?
+    };
+
+    entries.sort();
+
+    std::fs::remove_file(&sub_opt.index_path).context("can not remove index file")?;
+
+    let index = CsvIndex::new(&sub_opt.index_path);
+
+    for entry in entries {
+        index.add_metadata_to_store(entry)?;
     }
 
     Ok(())
