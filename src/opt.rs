@@ -41,7 +41,7 @@ pub(super) struct Opt {
         long = "datadir",
         global = true,
         value_name = "path",
-        default_value = "&DEFAULT_DATADIR_STRING",
+        default_value = &DEFAULT_DATADIR_STRING,
         env = "TODUST_DATADIR"
     )]
     pub(super) datadir: PathBuf,
@@ -105,6 +105,10 @@ pub(super) enum SubCommand {
     /// Set due date for entry
     #[structopt(name = "due")]
     Due(DueSubCommandOpts),
+
+    /// Take two index files and merge them together into a new index file
+    #[structopt(name = "merge_index_files")]
+    MergeIndexFiles(MergeIndexFilesSubCommandOpts),
 }
 
 /// Options for the add subcommand
@@ -195,4 +199,24 @@ pub(super) struct DueSubCommandOpts {
     /// When the task is due. Has to be date in format 2019-12-24
     #[structopt(index = 2, value_name = "due_date")]
     pub(super) due_date: NaiveDate,
+}
+
+/// Options for merge subcommand
+#[derive(StructOpt, Debug)]
+pub(super) struct MergeIndexFilesSubCommandOpts {
+    /// Path to the first input index file
+    #[structopt(index = 1, value_name = "index_file_path")]
+    pub(super) input_first: PathBuf,
+
+    /// Path to the second input index file
+    #[structopt(index = 2, value_name = "index_file_path")]
+    pub(super) input_second: PathBuf,
+
+    /// Path to the output index file
+    #[structopt(index = 3, value_name = "index_file_path")]
+    pub(super) output: PathBuf,
+
+    /// Force overwriting output file
+    #[structopt(short = "f", long = "force")]
+    pub(super) force: bool,
 }

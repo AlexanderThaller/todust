@@ -17,7 +17,10 @@ use crate::{
     },
     opt::*,
     store::Store,
-    store_csv::CsvStore,
+    store_csv::{
+        CsvIndex,
+        CsvStore,
+    },
 };
 use chrono::Utc;
 use failure::{
@@ -56,7 +59,7 @@ fn format_err(err: &Error) -> String {
         causes += &format!("{}: ", c);
     }
 
-    let causes = causes.trim_start().trim_start_matches(':');
+    let causes = causes.trim().trim_matches(':');
 
     causes.to_owned()
 }
@@ -66,12 +69,10 @@ fn run() -> Result<(), Error> {
 
     // setup logging
     {
-        let config = simplelog::ConfigBuilder::new()
-            .set_time_format("%+".to_string())
-            .build();
+        let config = simplelog::ConfigBuilder::new().build();
 
         if let Err(err) =
-            simplelog::TermLogger::init(opt.log_level, config, simplelog::TerminalMode::Stderr)
+            { simplelog::TermLogger::init(opt.log_level, config, simplelog::TerminalMode::Stderr) }
         {
             eprintln!("can not initialize logger: {}", err);
             ::std::process::exit(1);
@@ -91,6 +92,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Projects(sub_opt) => run_projects(&opt, sub_opt),
         SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
         SubCommand::Due(sub_opt) => run_due(&opt, sub_opt),
+        SubCommand::MergeIndexFiles(sub_opt) => run_merge_index_files(&opt, sub_opt),
     }
 }
 
@@ -206,7 +208,7 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
         metadata: Metadata {
             project: sub_opt.target_project.clone(),
             last_change: Utc::now(),
-            ..old_entry.metadata.clone()
+            ..old_entry.metadata
         },
     };
 
@@ -382,6 +384,31 @@ fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
     };
 
     store.add_entry(new_entry).context("can not add entry")?;
+
+    Ok(())
+}
+
+fn run_merge_index_files(_opt: &Opt, sub_opt: &MergeIndexFilesSubCommandOpts) -> Result<(), Error> {
+    if sub_opt.output.exists() && !sub_opt.force {
+        bail!("will not overwrite existing output file")
+    } else {
+        std::fs::remove_file(&sub_opt.output).context("can not remove existing output file")?;
+    }
+
+    let first_store = CsvIndex::new(&sub_opt.input_first);
+    let second_store = CsvIndex::new(&sub_opt.input_second);
+    let output_store = CsvIndex::new(&sub_opt.output);
+
+    let mut first_entries = first_store.get_metadata_entries()?;
+    let mut second_entries = second_store.get_metadata_entries()?;
+
+    let mut merged = std::collections::BTreeSet::default();
+    merged.append(&mut first_entries);
+    merged.append(&mut second_entries);
+
+    for entry in merged {
+        output_store.add_metadata_to_store(entry)?;
+    }
 
     Ok(())
 }

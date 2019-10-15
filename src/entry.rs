@@ -36,13 +36,13 @@ use tera::{
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
-pub(crate) struct Metadata {
-    pub(crate) last_change: DateTime<Utc>,
-    pub(crate) due: Option<NaiveDate>,
-    pub(crate) started: DateTime<Utc>,
-    pub(crate) project: String,
-    pub(crate) finished: Option<DateTime<Utc>>,
-    pub(crate) uuid: Uuid,
+pub(super) struct Metadata {
+    pub(super) last_change: DateTime<Utc>,
+    pub(super) due: Option<NaiveDate>,
+    pub(super) started: DateTime<Utc>,
+    pub(super) project: String,
+    pub(super) finished: Option<DateTime<Utc>>,
+    pub(super) uuid: Uuid,
 }
 
 impl Default for Metadata {
@@ -59,15 +59,15 @@ impl Default for Metadata {
 }
 
 impl Metadata {
-    pub(crate) fn is_active(&self) -> bool {
+    pub(super) fn is_active(&self) -> bool {
         self.finished.is_none()
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
-pub(crate) struct Entry {
-    pub(crate) metadata: Metadata,
-    pub(crate) text: String,
+pub(super) struct Entry {
+    pub(super) metadata: Metadata,
+    pub(super) text: String,
 }
 
 impl Default for Entry {
@@ -80,11 +80,11 @@ impl Default for Entry {
 }
 
 impl Entry {
-    pub(crate) fn is_active(&self) -> bool {
+    pub(super) fn is_active(&self) -> bool {
         self.metadata.is_active()
     }
 
-    pub(crate) fn age(&self) -> ::chrono::Duration {
+    pub(super) fn age(&self) -> ::chrono::Duration {
         Utc::now().signed_duration_since(self.metadata.started)
     }
 }
@@ -103,8 +103,8 @@ impl fmt::Display for Entry {
 }
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
-pub(crate) struct Entries {
-    pub(crate) entries: BTreeSet<Entry>,
+pub(super) struct Entries {
+    pub(super) entries: BTreeSet<Entry>,
 }
 
 impl From<BTreeSet<Entry>> for Entries {
@@ -114,15 +114,15 @@ impl From<BTreeSet<Entry>> for Entries {
 }
 
 impl Entries {
-    pub(crate) fn len(&self) -> usize {
+    pub(super) fn len(&self) -> usize {
         self.entries.len()
     }
 
-    pub(crate) fn get_active(self) -> Entries {
+    pub(super) fn get_active(self) -> Entries {
         self.into_iter().filter(Entry::is_active).collect()
     }
 
-    pub(crate) fn entry_by_id(self, id: usize) -> Result<Entry, Error> {
+    pub(super) fn entry_by_id(self, id: usize) -> Result<Entry, Error> {
         let active_entries: Entries = self.get_active();
 
         if active_entries.len() < id {
@@ -134,11 +134,11 @@ impl Entries {
         Ok(entry)
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
-    pub(crate) fn latest_entries(self) -> Self {
+    pub(super) fn latest_entries(self) -> Self {
         let mut latest = BTreeMap::new();
 
         for entry in self.entries {
@@ -264,11 +264,11 @@ fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<
 }
 
 #[derive(Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct ProjectCount {
-    pub(crate) project: String,
-    pub(crate) active_count: usize,
-    pub(crate) done_count: usize,
-    pub(crate) total_count: usize,
+pub(super) struct ProjectCount {
+    pub(super) project: String,
+    pub(super) active_count: usize,
+    pub(super) done_count: usize,
+    pub(super) total_count: usize,
 }
 
 impl Add for ProjectCount {
