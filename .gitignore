@@ -3,3 +3,4 @@
 **/*.rs.rustfmt
 /data.sqlite
 /.worktrees
+/data

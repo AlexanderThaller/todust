@@ -389,10 +389,12 @@ fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_merge_index_files(_opt: &Opt, sub_opt: &MergeIndexFilesSubCommandOpts) -> Result<(), Error> {
-    if sub_opt.output.exists() && !sub_opt.force {
-        bail!("will not overwrite existing output file")
-    } else {
-        std::fs::remove_file(&sub_opt.output).context("can not remove existing output file")?;
+    if sub_opt.output.exists() {
+        if sub_opt.force {
+            std::fs::remove_file(&sub_opt.output).context("can not remove existing output file")?;
+        } else {
+            bail!("will not overwrite existing output file")
+        }
     }
 
     let first_store = CsvIndex::new(&sub_opt.input_first);
