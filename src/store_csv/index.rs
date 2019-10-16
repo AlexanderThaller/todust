@@ -32,10 +32,11 @@ impl CsvIndex {
         Ok(file)
     }
 
-    pub(super) fn add_entry_to_index(&self, entry: &Metadata) -> Result<(), Error> {
+    pub(super) fn insert_entry(&self, entry: &Metadata) -> Result<(), Error> {
         let index_path = &self.index_file_path;
 
         let mut builder = csv::WriterBuilder::new();
+
         // We only want to write the header if the file does not exist yet so we can
         // just append new entries to the existing file without having multiple
         // headers.
@@ -58,9 +59,9 @@ impl CsvIndex {
         Ok(())
     }
 
-    pub(super) fn get_projects_from_index(&self) -> Result<Vec<String>, Error> {
+    pub(super) fn get_projects(&self) -> Result<Vec<String>, Error> {
         let mut projects = self
-            .get_latest_metadata_entries()?
+            .get_latest_metadata()?
             .into_iter()
             .map(|metadata| metadata.project)
             .collect::<Vec<_>>();
@@ -70,7 +71,7 @@ impl CsvIndex {
         Ok(projects)
     }
 
-    pub(crate) fn get_metadata_entries(&self) -> Result<BTreeSet<Metadata>, Error> {
+    pub(crate) fn get_metadata(&self) -> Result<BTreeSet<Metadata>, Error> {
         let index_path = &self.index_file_path;
 
         if !index_path.exists() {
@@ -88,8 +89,8 @@ impl CsvIndex {
         Ok(entries)
     }
 
-    pub(crate) fn get_latest_metadata_entries(&self) -> Result<Vec<Metadata>, Error> {
-        let raw_entries = self.get_metadata_entries()?;
+    pub(crate) fn get_latest_metadata(&self) -> Result<Vec<Metadata>, Error> {
+        let raw_entries = self.get_metadata()?;
 
         let mut latest_entries = std::collections::BTreeMap::new();
         for metadata in raw_entries {
@@ -106,15 +107,15 @@ impl CsvIndex {
         Ok(metadata_entries)
     }
 
-    pub(crate) fn add_metadata_to_store(&self, metadata: Metadata) -> Result<(), Error> {
-        self.add_entry_to_index(&metadata)
+    pub(crate) fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
+        self.insert_entry(&metadata)
             .context("can not add metadata to index")?;
 
         Ok(())
     }
 
     pub(super) fn cleanup_duplicate_uuids(&self) -> Result<(), Error> {
-        let mut metadata = self.get_latest_metadata_entries()?;
+        let mut metadata = self.get_latest_metadata()?;
 
         metadata.sort();
 
@@ -122,7 +123,7 @@ impl CsvIndex {
         std::fs::remove_file(index_path).context("can not remove old index file")?;
 
         for entry in metadata {
-            self.add_metadata_to_store(entry)?;
+            self.add_metadata(entry)?;
         }
 
         Ok(())

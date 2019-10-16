@@ -401,20 +401,20 @@ fn run_merge_index_files(_opt: &Opt, sub_opt: &MergeIndexFilesSubCommandOpts) ->
         }
     }
 
-    let first_store = CsvIndex::new(&sub_opt.input_first);
-    let second_store = CsvIndex::new(&sub_opt.input_second);
-    let output_store = CsvIndex::new(&sub_opt.output);
+    let first_index = CsvIndex::new(&sub_opt.input_first);
+    let second_index = CsvIndex::new(&sub_opt.input_second);
+    let output_index = CsvIndex::new(&sub_opt.output);
 
-    let mut first_entries = first_store.get_metadata_entries()?;
-    let mut second_entries = second_store.get_metadata_entries()?;
+    let first_entries = first_index.get_metadata()?;
+    let second_entries = second_index.get_metadata()?;
 
-    let mut merged = std::collections::BTreeSet::default();
-    merged.append(&mut first_entries);
-    merged.append(&mut second_entries);
-
-    for entry in merged {
-        output_store.add_metadata_to_store(entry)?;
-    }
+    first_entries
+        .into_iter()
+        .chain(second_entries.into_iter())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(|entry| output_index.add_metadata(entry))
+        .collect::<Result<(), Error>>()?;
 
     Ok(())
 }

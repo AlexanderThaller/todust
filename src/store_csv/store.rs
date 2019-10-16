@@ -227,7 +227,7 @@ impl Store for CsvStore {
         trace!("new: {:#?}", new);
 
         self.index
-            .add_entry_to_index(&new)
+            .insert_entry(&new)
             .context("can not add entry to done index")?;
 
         Ok(())
@@ -268,7 +268,7 @@ impl Store for CsvStore {
     fn get_entries(&self, project: &str) -> Result<Entries, Error> {
         let metadata_entries = self
             .index
-            .get_latest_metadata_entries()
+            .get_latest_metadata()
             .context("can not get metadata from active index")?;
 
         let raw_entries: Entries = metadata_entries
@@ -299,7 +299,7 @@ impl Store for CsvStore {
     }
 
     fn get_projects_count(&self) -> Result<Vec<ProjectCount>, Error> {
-        let metadata = self.index.get_latest_metadata_entries()?;
+        let metadata = self.index.get_latest_metadata()?;
 
         let mut count: HashMap<String, ProjectCount> = HashMap::default();
 
@@ -324,10 +324,7 @@ impl Store for CsvStore {
     }
 
     fn get_projects(&self) -> Result<Vec<String>, Error> {
-        let projects = self
-            .index
-            .get_projects_from_index()
-            .context("can not get projects")?;
+        let projects = self.index.get_projects().context("can not get projects")?;
 
         trace!("projects: {:#?}", projects);
 
@@ -335,15 +332,15 @@ impl Store for CsvStore {
     }
 
     fn get_metadata(&self) -> Result<BTreeSet<Metadata>, Error> {
-        self.index.get_metadata_entries()
+        self.index.get_metadata()
     }
 
     fn get_latest_metadata(&self) -> Result<Vec<Metadata>, Error> {
-        self.index.get_latest_metadata_entries()
+        self.index.get_latest_metadata()
     }
 
     fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
-        self.index.add_metadata_to_store(metadata)
+        self.index.add_metadata(metadata)
     }
 
     fn run_cleanup(&self) -> Result<(), Error> {
@@ -359,7 +356,7 @@ impl Store for CsvStore {
         self.write_entry_text(&entry)
             .context("can not write entry text to file")?;
 
-        let metadata = self.index.get_latest_metadata_entries()?;
+        let metadata = self.index.get_latest_metadata()?;
 
         if !metadata.contains(&entry.metadata) {
             self.add_metadata(entry.metadata)?;
