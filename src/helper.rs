@@ -19,6 +19,9 @@ pub(super) fn confirm(message: &str, default: bool) -> Result<bool, Error> {
     let default_text = if default { "Y/n" } else { "N/y" };
 
     println!("{}\n({}): ", message, default_text);
+
+    // TODO: Remove this when upstream is fixed
+    #[allow(clippy::try_err)]
     let input: String = read!("{}\n");
 
     match input.trim().to_uppercase().as_str() {
