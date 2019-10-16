@@ -82,25 +82,26 @@ fn run() -> Result<(), Error> {
 
     trace!("opt: {:#?}", opt);
 
-    match &opt.cmd {
-        SubCommand::Add(sub_opt) => run_add(&opt, sub_opt),
-        SubCommand::Cleanup => run_cleanup(&opt),
-        SubCommand::Done(sub_opt) => run_done(&opt, sub_opt),
-        SubCommand::Edit(sub_opt) => run_edit(&opt, sub_opt),
-        SubCommand::List => run_list(&opt),
-        SubCommand::Move(sub_opt) => run_move(&opt, sub_opt),
-        SubCommand::Print(sub_opt) => run_print(&opt, sub_opt),
-        SubCommand::Projects(sub_opt) => run_projects(&opt, sub_opt),
-        SubCommand::Import(sub_opt) => run_import(&opt, sub_opt),
-        SubCommand::Due(sub_opt) => run_due(&opt, sub_opt),
-        SubCommand::MergeIndexFiles(sub_opt) => run_merge_index_files(&opt, sub_opt),
+    match opt.cmd {
+        SubCommand::Add(sub_opt) => run_add(sub_opt),
+        SubCommand::Cleanup(sub_opt) => run_cleanup(sub_opt),
+        SubCommand::Completion(sub_opt) => run_completion(sub_opt),
+        SubCommand::Done(sub_opt) => run_done(sub_opt),
+        SubCommand::Due(sub_opt) => run_due(sub_opt),
+        SubCommand::Edit(sub_opt) => run_edit(sub_opt),
+        SubCommand::Import(sub_opt) => run_import(sub_opt),
+        SubCommand::List(sub_opt) => run_list(sub_opt),
+        SubCommand::MergeIndexFiles(sub_opt) => run_merge_index_files(sub_opt),
+        SubCommand::Move(sub_opt) => run_move(sub_opt),
+        SubCommand::Print(sub_opt) => run_print(sub_opt),
+        SubCommand::Projects(sub_opt) => run_projects(sub_opt),
     }
 }
 
-fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_add(opt: AddSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
-    let text = if let Some(opt_text) = &sub_opt.text {
+    let text = if let Some(opt_text) = &opt.text {
         opt_text.clone()
     } else {
         string_from_editor(None).context("can not get message from editor")?
@@ -109,7 +110,7 @@ fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
     let entry = Entry {
         text,
         metadata: Metadata {
-            project: opt.project.clone(),
+            project: opt.project_opt.project,
             ..Metadata::default()
         },
     };
@@ -121,22 +122,33 @@ fn run_add(opt: &Opt, sub_opt: &AddSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_done(opt: &Opt, sub_opt: &DoneSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
-    store.entry_done(sub_opt.entry_id, &opt.project)?;
+fn run_cleanup(opt: CleanupSubCommandOpts) -> Result<(), Error> {
+    CsvStore::open(&opt.datadir_opt.datadir)?.run_cleanup()
+}
+
+fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
+    std::fs::create_dir_all(&opt.directory)?;
+    Opt::clap().gen_completions(env!("CARGO_PKG_NAME"), opt.shell, opt.directory);
 
     Ok(())
 }
 
-fn run_edit(opt: &Opt, sub_opt: &EditSubCommandOpts) -> Result<(), Error> {
-    if sub_opt.entry_id < 1 {
+fn run_done(opt: DoneSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    store.entry_done(opt.entry_id, &opt.project_opt.project)?;
+
+    Ok(())
+}
+
+fn run_edit(opt: EditSubCommandOpts) -> Result<(), Error> {
+    if opt.entry_id < 1 {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = CsvStore::open(&opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
     let old_entry = store
-        .get_entry_by_id(sub_opt.entry_id, &opt.project)
+        .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
         .context("can not get entry")?;
 
     let new_text = string_from_editor(Some(&old_entry.text)).context(
@@ -144,7 +156,7 @@ fn run_edit(opt: &Opt, sub_opt: &EditSubCommandOpts) -> Result<(), Error> {
 editor",
     )?;
 
-    let new_entry = if sub_opt.update_time {
+    let new_entry = if opt.update_time {
         Entry {
             text: new_text,
             metadata: Metadata {
@@ -167,11 +179,11 @@ editor",
     Ok(())
 }
 
-fn run_list(opt: &Opt) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_list(opt: ListSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
     let entries = store
-        .get_active_entries(&opt.project)
+        .get_active_entries(&opt.project_opt.project)
         .context("can not get entries from store")?;
 
     if entries.is_empty() {
@@ -197,17 +209,17 @@ fn run_list(opt: &Opt) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_move(opt: MoveSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
     let old_entry = store
-        .get_entry_by_id(sub_opt.entry_id, &opt.project)
+        .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
         .context("can not get entry")?;
 
     let new_entry = Entry {
         text: old_entry.text.clone(),
         metadata: Metadata {
-            project: sub_opt.target_project.clone(),
+            project: opt.target_project,
             last_change: Utc::now(),
             ..old_entry.metadata
         },
@@ -218,12 +230,12 @@ fn run_move(opt: &Opt, sub_opt: &MoveSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_print(opt: PrintSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
-    let project = opt.project.clone();
+    let project = opt.project_opt.project;
 
-    match sub_opt.entry_id {
+    match opt.entry_id {
         Some(entry_id) => {
             let entry = store
                 .get_entry_by_id(entry_id, &project)
@@ -235,7 +247,7 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
         }
 
         None => {
-            if sub_opt.no_done {
+            if opt.no_done {
                 let entries = store
                     .get_active_entries(&project)
                     .context("can not get entries from store")?;
@@ -254,22 +266,45 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_projects(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
-    if sub_opt.simple {
-        run_projects_simple(opt, sub_opt)
+fn run_projects(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
+    if opt.simple {
+        run_projects_simple(opt)
     } else {
-        run_projects_normal(opt, sub_opt)
+        run_projects_normal(opt)
     }
 }
 
-fn run_projects_normal(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_projects_simple(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
     let mut projects_count = store
         .get_projects_count()
         .context("can not get projects count from store")?
         .into_iter()
-        .filter(|entry| entry.active_count != 0 || sub_opt.print_inactive)
+        .filter(|entry| entry.active_count != 0 || opt.print_inactive)
+        .collect::<Vec<_>>();
+
+    projects_count.sort();
+
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    for entry in projects_count {
+        handle.write_all(entry.project.as_bytes())?;
+        handle.write_all(b"\n")?;
+    }
+
+    Ok(())
+}
+
+fn run_projects_normal(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+
+    let mut projects_count = store
+        .get_projects_count()
+        .context("can not get projects count from store")?
+        .into_iter()
+        .filter(|entry| entry.active_count != 0 || opt.print_inactive)
         .collect::<Vec<_>>();
 
     projects_count.sort();
@@ -307,43 +342,16 @@ b->total.done_count, b->total.total_count]);
     Ok(())
 }
 
-fn run_projects_simple(opt: &Opt, sub_opt: &ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_import(opt: ImportSubCommandOpts) -> Result<(), Error> {
+    let from_store = CsvStore::open(&opt.from_path)?;
+    let new_store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
-    let mut projects_count = store
-        .get_projects_count()
-        .context("can not get projects count from store")?
-        .into_iter()
-        .filter(|entry| entry.active_count != 0 || sub_opt.print_inactive)
-        .collect::<Vec<_>>();
-
-    projects_count.sort();
-
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
-
-    for entry in projects_count {
-        handle.write_all(entry.project.as_bytes())?;
-        handle.write_all(b"\n")?;
-    }
-
-    Ok(())
-}
-
-fn run_cleanup(opt: &Opt) -> Result<(), Error> {
-    CsvStore::open(&opt.datadir)?.run_cleanup()
-}
-
-fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
-    let from_store = CsvStore::open(&sub_opt.from_path)?;
-    let new_store = CsvStore::open(&opt.datadir)?;
-
-    let projects = if sub_opt.import_all {
+    let projects = if opt.import_all {
         from_store
             .get_projects()
             .context("can not get projects from old store")?
     } else {
-        vec![opt.project.clone()]
+        vec![opt.project_opt.project]
     };
 
     for project in projects {
@@ -371,17 +379,17 @@ fn run_import(opt: &Opt, sub_opt: &ImportSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir)?;
+fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
 
     let old_entry = store
-        .get_entry_by_id(sub_opt.entry_id, &opt.project)
+        .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
         .context("can not get entry")?;
 
     let new_entry = Entry {
         text: old_entry.text,
         metadata: Metadata {
-            due: Some(sub_opt.due_date),
+            due: Some(opt.due_date),
             last_change: Utc::now(),
             ..old_entry.metadata
         },
@@ -392,18 +400,21 @@ fn run_due(opt: &Opt, sub_opt: &DueSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_merge_index_files(_opt: &Opt, sub_opt: &MergeIndexFilesSubCommandOpts) -> Result<(), Error> {
-    if sub_opt.output.exists() {
-        if sub_opt.force {
-            std::fs::remove_file(&sub_opt.output).context("can not remove existing output file")?;
+fn run_merge_index_files(opt: MergeIndexFilesSubCommandOpts) -> Result<(), Error> {
+    if opt.output.exists() {
+        if opt.force {
+            std::fs::remove_file(&opt.output).context(
+                "can not remove existing output
+file",
+            )?;
         } else {
             bail!("will not overwrite existing output file")
         }
     }
 
-    let first_index = CsvIndex::new(&sub_opt.input_first);
-    let second_index = CsvIndex::new(&sub_opt.input_second);
-    let output_index = CsvIndex::new(&sub_opt.output);
+    let first_index = CsvIndex::new(&opt.input_first);
+    let second_index = CsvIndex::new(&opt.input_second);
+    let output_index = CsvIndex::new(&opt.output);
 
     let first_entries = first_index.get_metadata()?;
     let second_entries = second_index.get_metadata()?;
