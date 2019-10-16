@@ -6,6 +6,7 @@ mod store_csv;
 
 use crate::{
     entry::{
+        Entries,
         Entry,
         Metadata,
         ProjectCount,
@@ -227,7 +228,10 @@ fn run_print(opt: &Opt, sub_opt: &PrintSubCommandOpts) -> Result<(), Error> {
             let entry = store
                 .get_entry_by_id(entry_id, &project)
                 .context("can not get entry")?;
-            println!("{}", entry.to_string());
+
+            let entries: Entries = entry.into();
+
+            println!("{}", entries);
         }
 
         None => {

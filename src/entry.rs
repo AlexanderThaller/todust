@@ -113,6 +113,15 @@ impl From<BTreeSet<Entry>> for Entries {
     }
 }
 
+impl From<Entry> for Entries {
+    fn from(entry: Entry) -> Self {
+        let mut entries = BTreeSet::new();
+        entries.insert(entry);
+
+        Self { entries }
+    }
+}
+
 impl Entries {
     pub(super) fn len(&self) -> usize {
         self.entries.len()
