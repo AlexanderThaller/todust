@@ -84,3 +84,30 @@ pub(super) fn asciidoc_to_html(value: Value, _: HashMap<String, Value>) -> TeraR
 
     Ok(to_value(&out).unwrap())
 }
+
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
+pub(super) fn asciidoc_header(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let input = try_get_value!("asciidoc_header", "value", String, value);
+
+    let mut out = String::from(
+        r#"
+:toc: right
+:toclevels: 3
+:sectanchors:
+:sectlink:
+:icons: font
+:linkattrs:
+:numbered:
+:idprefix:
+:idseparator: -
+:doctype: book
+:source-highlighter: pygments
+:listing-caption: Listing
+:hide-uri-scheme:
+"#,
+    );
+
+    out.push_str(&input);
+
+    Ok(to_value(&out).unwrap())
+}

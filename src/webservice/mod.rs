@@ -42,6 +42,7 @@ impl WebService {
         let entry_raw = include_str!("resources/html/entry.html.tera");
         templates.add_raw_template("entry.html", entry_raw).unwrap();
 
+        templates.register_filter("asciidoc_header", templating::asciidoc_header);
         templates.register_filter("asciidoc_to_html", templating::asciidoc_to_html);
         templates.register_filter("format_duration_since", templating::format_duration_since);
         templates.register_filter("lines", templating::lines);
@@ -63,6 +64,8 @@ impl WebService {
         app.at("/api/v1/list/:project").get(handler_api_v1_list);
 
         app.at("/static/css/main.css").get(handler_static_css_main);
+        app.at("/static/css/font-awesome.min.css").get(handler_static_css_font_awesome);
+        app.at("/static/fonts/fontawesome-webfont.woff2").get(handler_static_fonts_fontawesome_webfont_woff2);
 
         app.at("/favicon.ico").get(handler_404);
 
@@ -163,7 +166,23 @@ async fn handler_static_css_main(_context: Context<WebService>) -> EndpointResul
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/css")
-        .body(include_str!("resources/css/main.css").into())
+        .body(include_bytes!("resources/css/main.css").to_vec().into())
+        .unwrap())
+}
+
+async fn handler_static_css_font_awesome(_context: Context<WebService>) -> EndpointResult {
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/css")
+        .body(include_bytes!("resources/css/font-awesome.min.css").to_vec().into())
+        .unwrap())
+}
+
+async fn handler_static_fonts_fontawesome_webfont_woff2(_context: Context<WebService>) -> EndpointResult {
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "font/woff2")
+        .body(include_bytes!("resources/fonts/fontawesome-webfont.woff2").to_vec().into())
         .unwrap())
 }
 
