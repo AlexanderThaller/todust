@@ -73,9 +73,7 @@ fn run() -> Result<(), Error> {
 
     // setup logging
     {
-        let config = simplelog::ConfigBuilder::new()
-            .set_time_format_str("%Y-%m-%dT%H:%M:%S%.3f%:z")
-            .build();
+        let config = simplelog::ConfigBuilder::new().build();
 
         if let Err(err) =
             { simplelog::TermLogger::init(opt.log_level, config, simplelog::TerminalMode::Stderr) }
