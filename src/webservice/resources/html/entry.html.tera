@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-
     <title>Todust - Entry - {{ entry.text | single_line | truncate(length=100) }}</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/main.css">
   </head>
 
   <body>
@@ -16,13 +19,14 @@
       <li><b>Last Change:</b> {{ entry.metadata.last_change }}</li>
       <li><b>Started:</b> {{ entry.metadata.started }}</li>
       <li><b>Active Duration:</b> {{ entry.metadata.started | format_duration_since }}</li>
+
       {% if entry.metadata.due is some %}
       <li><b>Due:</b> {{ entry.metadata.due }}</li>
       {% endif %}
     </ul>
 
     <h2>Text</h2>
-    {{ entry.text | lines | trim }}
+    {{ entry.text | asciidoc_to_html }}
 
     <hr>
 
