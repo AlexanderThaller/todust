@@ -1,7 +1,10 @@
 use chrono::NaiveDate;
 use lazy_static::lazy_static;
 use simplelog::LevelFilter;
-use std::path::PathBuf;
+use std::{
+    net::SocketAddr,
+    path::PathBuf,
+};
 use structopt::{
     clap::{
         AppSettings::*,
@@ -122,6 +125,10 @@ pub(super) enum SubCommand {
     /// Generate shell completion for todust
     #[structopt(name = "completion")]
     Completion(CompletionSubCommandOpts),
+
+    /// Launch webservice
+    #[structopt(name = "web")]
+    Web(WebSubCommandOpts),
 }
 
 /// Options for the add subcommand
@@ -317,4 +324,20 @@ pub(super) struct CompletionSubCommandOpts {
     /// Folder to where to save the generated file to
     #[structopt(short = "d", long = "directory", value_name = "path")]
     pub(super) directory: PathBuf,
+}
+
+/// Options for the web subcommand
+#[derive(StructOpt, Debug)]
+pub(super) struct WebSubCommandOpts {
+    #[structopt(flatten)]
+    pub(super) datadir_opt: DatadirOpt,
+
+    /// Where to bind the webservice to
+    #[structopt(
+        short = "b",
+        long = "binding",
+        value_name = "address:port",
+        default_value = "127.0.0.1:9216"
+    )]
+    pub(super) binding: SocketAddr,
 }

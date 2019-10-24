@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <title>Todust - Todos - {{ project }}</title>
+  </head>
+
+  <body>
+    <h1>Todos - {{ project }}</h1>
+    <ol>
+      {% for entry in entries %}
+      <li>
+        <a href="/entry/{{ entry.metadata.uuid }}">
+          {{ entry.text | single_line | truncate(length=100) }}
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <hr>
+
+    <a href="/">back</a>
+  </body>
+</html>

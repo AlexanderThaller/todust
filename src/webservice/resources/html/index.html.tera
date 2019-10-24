@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <title>Todust - Projects</title>
+  </head>
+
+  <body>
+    <h1>Projects</h1>
+
+    <table>
+      <tr>
+        <th>Project</th>
+        <th>Active</th>
+        <th>Done</th>
+        <th>Total</th>
+      </tr>
+      {% for project in projects_count %}
+      <tr>
+        <td><a href="/project/{{ project.project }}">{{ project.project }}</a></td>
+        <td>{{ project.active_count }}</td>
+        <td>{{ project.done_count }}</td>
+        <td>{{ project.total_count }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>

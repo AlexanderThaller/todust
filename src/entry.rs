@@ -1,4 +1,4 @@
-use crate::helper;
+use crate::templating;
 use chrono::{
     DateTime,
     NaiveDate,
@@ -13,24 +13,17 @@ use serde_derive::{
     Deserialize,
     Serialize,
 };
-use serde_json::value::{
-    to_value,
-    Value,
-};
 use std::{
     collections::{
         BTreeMap,
         BTreeSet,
-        HashMap,
     },
     fmt,
     iter::FromIterator,
     ops::Add,
 };
 use tera::{
-    try_get_value,
     Context,
-    Result as TeraResult,
     Tera,
 };
 use uuid::Uuid;
@@ -161,6 +154,10 @@ impl Entries {
 
         entries.into()
     }
+
+    pub(super) fn into_inner(self) -> BTreeSet<Entry> {
+        self.entries
+    }
 }
 
 impl fmt::Display for Entries {
@@ -194,9 +191,9 @@ impl fmt::Display for Entries {
             include_str!("../resources/templates/entries.asciidoc"),
         )
         .expect("can not compile entries.asciidoc template");
-        tera.register_filter("single_line", single_line);
-        tera.register_filter("lines", lines);
-        tera.register_filter("format_duration_since", format_duration_since);
+        tera.register_filter("single_line", templating::single_line);
+        tera.register_filter("lines", templating::lines);
+        tera.register_filter("format_duration_since", templating::format_duration_since);
 
         let rendered = tera
             .render("entries.asciidoc", &context)
@@ -232,47 +229,7 @@ impl<'a> IntoIterator for &'a Entries {
     }
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
-    let s = try_get_value!("single_line", "value", String, value);
-
-    let s = s.replace("\n", " ");
-
-    Ok(to_value(&s).unwrap())
-}
-
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
-    let mut out = String::new();
-
-    let s = try_get_value!("lines", "value", String, value);
-    let lines = s.lines();
-    let mut is_codeblock = false;
-    for line in lines {
-        if line == "----" {
-            is_codeblock = !is_codeblock;
-        }
-
-        out.push_str(line);
-        out.push('\n');
-
-        if !is_codeblock {
-            out.push('\n');
-        }
-    }
-
-    Ok(to_value(&out).unwrap())
-}
-
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
-    let started = try_get_value!("format_duration_since", "value", DateTime<Utc>, value);
-    let duration = Utc::now().signed_duration_since(started);
-
-    Ok(to_value(&helper::format_duration(duration)).unwrap())
-}
-
-#[derive(Debug, Default, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Default, Ord, PartialOrd, Eq, PartialEq, Serialize)]
 pub(super) struct ProjectCount {
     pub(super) project: String,
     pub(super) active_count: usize,

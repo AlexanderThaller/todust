@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+
+    <title>Todust - Entry - {{ entry.text | single_line | truncate(length=100) }}</title>
+  </head>
+
+  <body>
+    <h1>Entry - {{ entry.text | single_line | truncate(length=100) }}</h1>
+
+    <h2>Metadata</h2>
+    <ul>
+      <li><b>Project:</b> <a href="/project/{{ entry.metadata.project }}">{{ entry.metadata.project}}</a></li>
+      <li><b>UUID:</b> {{ entry.metadata.uuid }}</li>
+      <li><b>Last Change:</b> {{ entry.metadata.last_change }}</li>
+      <li><b>Started:</b> {{ entry.metadata.started }}</li>
+      <li><b>Active Duration:</b> {{ entry.metadata.started | format_duration_since }}</li>
+      {% if entry.metadata.due is some %}
+      <li><b>Due:</b> {{ entry.metadata.due }}</li>
+      {% endif %}
+    </ul>
+
+    <h2>Text</h2>
+    {{ entry.text | lines | trim }}
+
+    <hr>
+
+    <a href="/project/{{ entry.metadata.project }}">back</a>
+  </body>
+</html>

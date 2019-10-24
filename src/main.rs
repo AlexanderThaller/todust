@@ -3,6 +3,8 @@ mod helper;
 mod opt;
 mod store;
 mod store_csv;
+mod templating;
+mod webservice;
 
 use crate::{
     entry::{
@@ -22,6 +24,7 @@ use crate::{
         CsvIndex,
         CsvStore,
     },
+    webservice::WebService,
 };
 use chrono::Utc;
 use failure::{
@@ -95,6 +98,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Move(sub_opt) => run_move(sub_opt),
         SubCommand::Print(sub_opt) => run_print(sub_opt),
         SubCommand::Projects(sub_opt) => run_projects(sub_opt),
+        SubCommand::Web(sub_opt) => run_web(sub_opt),
     }
 }
 
@@ -428,4 +432,10 @@ file",
         .collect::<Result<(), Error>>()?;
 
     Ok(())
+}
+
+fn run_web(opt: WebSubCommandOpts) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+
+    WebService::open(store)?.run(opt.binding)
 }

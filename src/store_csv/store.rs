@@ -12,6 +12,7 @@ use crate::{
 use chrono::Utc;
 use failure::{
     bail,
+    format_err,
     Error,
     ResultExt,
 };
@@ -286,6 +287,19 @@ impl Store for CsvStore {
         trace!("entries: {:#?}", entries);
 
         Ok(entries)
+    }
+
+    fn get_entry_by_uuid(&self, uuid: &Uuid) -> Result<Entry, Error> {
+        let metadata = self
+            .index
+            .get_latest_metadata()?
+            .into_iter()
+            .find(|entry| entry.uuid == *uuid)
+            .ok_or_else(|| format_err!("entry not found"))?;
+
+        let entry = self.get_entry_for_metadata(metadata)?;
+
+        Ok(entry)
     }
 
     fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
