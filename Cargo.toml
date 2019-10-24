@@ -26,7 +26,7 @@ text_io = "0.1"
 tide = { git = "https://github.com/rustasync/tide" }
 time = "0.1"
 toml = "0.5"
-uuid = { version = "0.7", features = ["serde", "v4"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 xdg = "2"
 
 [profile.release]
