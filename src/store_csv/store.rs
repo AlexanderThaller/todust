@@ -246,6 +246,18 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
+    fn get_done_entries(&self, project: &str) -> Result<Entries, Error> {
+        let entries = self
+            .get_entries(project)?
+            .into_iter()
+            .filter(Entry::is_done)
+            .collect();
+
+        trace!("entries: {:#?}", entries);
+
+        Ok(entries)
+    }
+
     fn get_all_entries(&self) -> Result<Entries, Error> {
         let projects = self
             .get_projects()

@@ -105,10 +105,13 @@ async fn handler_project(context: Context<WebService>) -> EndpointResult {
         .param("project")
         .client_err()
         .unwrap_or_else(|_| "work".to_string());
-    let entries = context.state().store.get_active_entries(&project).unwrap();
+
+    let entries_active = context.state().store.get_active_entries(&project).unwrap();
+    let entries_done = context.state().store.get_done_entries(&project).unwrap();
 
     let mut template_context = tera::Context::new();
-    template_context.insert("entries", &entries.into_inner());
+    template_context.insert("entries_active", &entries_active.into_inner());
+    template_context.insert("entries_done", &entries_done.into_inner());
     template_context.insert("project", &project);
 
     let output = context

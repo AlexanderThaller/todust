@@ -11,8 +11,21 @@
 
   <body>
     <h1>Todos - {{ project }}</h1>
+
+    <h2>Active</h2>
     <ol>
-      {% for entry in entries %}
+      {% for entry in entries_active %}
+      <li>
+        <a href="/entry/{{ entry.metadata.uuid }}">
+          {{ entry.text | single_line | truncate(length=100) }}
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <h2>Done</h2>
+    <ol>
+      {% for entry in entries_done %}
       <li>
         <a href="/entry/{{ entry.metadata.uuid }}">
           {{ entry.text | single_line | truncate(length=100) }}

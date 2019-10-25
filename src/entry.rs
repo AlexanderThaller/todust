@@ -55,6 +55,10 @@ impl Metadata {
     pub(super) fn is_active(&self) -> bool {
         self.finished.is_none()
     }
+
+    pub(super) fn is_done(&self) -> bool {
+        self.finished.is_some()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Ord, Eq, PartialOrd, PartialEq, Clone)]
@@ -75,6 +79,10 @@ impl Default for Entry {
 impl Entry {
     pub(super) fn is_active(&self) -> bool {
         self.metadata.is_active()
+    }
+
+    pub(super) fn is_done(&self) -> bool {
+        self.metadata.is_done()
     }
 
     pub(super) fn age(&self) -> ::chrono::Duration {
