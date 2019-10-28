@@ -23,6 +23,7 @@
       {% endfor %}
     </ol>
 
+    {% if show_done %}
     <h2>Done</h2>
     <ol>
       {% for entry in entries_done %}
@@ -33,10 +34,16 @@
       </li>
       {% endfor %}
     </ol>
+    {% endif %}
 
     <hr>
 
     <a href="/">back</a> |
-    <a href="/project/add/entry/{{ project }}">add enty</a>
+    <a href="/project/add/entry/{{ project }}">add enty</a> |
+    {% if show_done %}
+    <a href="/project/{{ project }}">hide done</a>
+    {% else %}
+    <a href="/project/{{ project }}?show_done=true">show done</a>
+    {% endif %}
   </body>
 </html>

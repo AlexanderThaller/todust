@@ -1,7 +1,8 @@
-use serde::Deserialize;
-use tide::forms::ContextExt;
-use uuid::Uuid;
 use crate::{
+    entry::{
+        Entry,
+        Metadata,
+    },
     store::Store,
     store_csv::CsvStore,
     templating,
@@ -11,15 +12,16 @@ use http::{
     response::Response,
     StatusCode,
 };
+use serde::Deserialize;
 use tera::Tera;
 use tide::{
     error::ResultExt,
+    forms::ContextExt as OtherContextExt,
     response,
     Context,
     EndpointResult,
 };
-use crate::entry::Entry;
-use crate::entry::Metadata;
+use uuid::Uuid;
 
 pub(super) struct WebService {
     store: CsvStore,
@@ -48,7 +50,9 @@ impl WebService {
         templates.add_raw_template("entry.html", entry_raw).unwrap();
 
         let project_add_entry_raw = include_str!("resources/html/project_add_entry.html.tera");
-        templates.add_raw_template("project_add_entry.html", project_add_entry_raw).unwrap();
+        templates
+            .add_raw_template("project_add_entry.html", project_add_entry_raw)
+            .unwrap();
 
         templates.register_filter("asciidoc_header", templating::asciidoc_header);
         templates.register_filter("asciidoc_to_html", templating::asciidoc_to_html);
@@ -70,17 +74,24 @@ impl WebService {
         app.at("/").get(handler_index);
 
         app.at("/project/:project").get(handler_project);
-        app.at("/project/add/entry/:project").get(handler_project_add_entry);
+        app.at("/project/add/entry/:project")
+            .get(handler_project_add_entry);
         app.at("/entry/:uuid").get(handler_entry);
 
-        app.at("/api/v1/project/entries/:project").get(handler_api_v1_project_entries);
-        app.at("/api/v1/entry/mark/done/:uuid").get(handler_api_v1_mark_entry_done);
-        app.at("/api/v1/entry/mark/active/:uuid").get(handler_api_v1_mark_entry_active);
-        app.at("/api/v1/project/add/entry/:project").post(handler_api_v1_project_add_entry);
+        app.at("/api/v1/project/entries/:project")
+            .get(handler_api_v1_project_entries);
+        app.at("/api/v1/entry/mark/done/:uuid")
+            .get(handler_api_v1_mark_entry_done);
+        app.at("/api/v1/entry/mark/active/:uuid")
+            .get(handler_api_v1_mark_entry_active);
+        app.at("/api/v1/project/add/entry/:project")
+            .post(handler_api_v1_project_add_entry);
 
         app.at("/static/css/main.css").get(handler_static_css_main);
-        app.at("/static/css/font-awesome.min.css").get(handler_static_css_font_awesome);
-        app.at("/static/fonts/fontawesome-webfont.woff2").get(handler_static_fonts_fontawesome_webfont_woff2);
+        app.at("/static/css/font-awesome.min.css")
+            .get(handler_static_css_font_awesome);
+        app.at("/static/fonts/fontawesome-webfont.woff2")
+            .get(handler_static_fonts_fontawesome_webfont_woff2);
 
         app.at("/favicon.ico").get(handler_404);
 
@@ -116,18 +127,37 @@ async fn handler_index(context: Context<WebService>) -> EndpointResult {
 }
 
 async fn handler_project(context: Context<WebService>) -> EndpointResult {
-    let project: String = context
-        .param("project")
-        .client_err()
-        .unwrap_or_else(|_| "work".to_string());
+    let project: String = context.param("project").client_err()?;
+
+    dbg!(context.uri().query());
+
+    let show_done = match context.uri().query() {
+        Some(parameters) => parameters
+            .split('&')
+            .map(|key_values| {
+                let mut split = key_values.split('=');
+                (split.next().unwrap_or(""), split.next().unwrap_or(""))
+            })
+            .find(|(key, _)| key == &"show_done")
+            .map(|(_, value)| value.parse().unwrap_or(false))
+            .unwrap_or(false),
+        None => false,
+    };
+
+    dbg!(show_done);
 
     let entries_active = context.state().store.get_active_entries(&project).unwrap();
-    let entries_done = context.state().store.get_done_entries(&project).unwrap();
+    let entries_done = if show_done {
+        context.state().store.get_done_entries(&project).unwrap()
+    } else {
+        crate::entry::Entries::default()
+    };
 
     let mut template_context = tera::Context::new();
     template_context.insert("entries_active", &entries_active.into_inner());
     template_context.insert("entries_done", &entries_done.into_inner());
     template_context.insert("project", &project);
+    template_context.insert("show_done", &show_done);
 
     let output = context
         .state()
@@ -251,8 +281,7 @@ async fn handler_api_v1_project_add_entry(mut context: Context<WebService>) -> E
 
     let uuid = entry.metadata.uuid;
 
-    context.state().store
-        .add_entry(entry).unwrap();
+    context.state().store.add_entry(entry).unwrap();
 
     Ok(Response::builder()
         .status(StatusCode::SEE_OTHER)
@@ -274,15 +303,25 @@ async fn handler_static_css_font_awesome(_context: Context<WebService>) -> Endpo
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "text/css")
-        .body(include_bytes!("resources/css/font-awesome.min.css").to_vec().into())
+        .body(
+            include_bytes!("resources/css/font-awesome.min.css")
+                .to_vec()
+                .into(),
+        )
         .unwrap())
 }
 
-async fn handler_static_fonts_fontawesome_webfont_woff2(_context: Context<WebService>) -> EndpointResult {
+async fn handler_static_fonts_fontawesome_webfont_woff2(
+    _context: Context<WebService>,
+) -> EndpointResult {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "font/woff2")
-        .body(include_bytes!("resources/fonts/fontawesome-webfont.woff2").to_vec().into())
+        .body(
+            include_bytes!("resources/fonts/fontawesome-webfont.woff2")
+                .to_vec()
+                .into(),
+        )
         .unwrap())
 }
 
