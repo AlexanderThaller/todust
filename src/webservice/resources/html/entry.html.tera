@@ -23,7 +23,7 @@
     <b>Due:</b> {{ entry.metadata.due | some_or_dash }}
 
     <h2>Text</h2>
-    {{ entry.text | asciidoc_header | asciidoc_to_html }}
+    {{ entry.text | lines | asciidoc_header | asciidoc_to_html }}
 
     <hr>
 
