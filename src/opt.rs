@@ -50,9 +50,8 @@ pub(super) struct Opt {
 pub(super) struct DatadirOpt {
     /// Path to the datadir
     #[structopt(
-        short = "D",
+        short = "d",
         long = "datadir",
-        global = true,
         value_name = "path",
         default_value = &DEFAULT_DATADIR_STRING,
         env = "TODUST_DATADIR"
@@ -64,9 +63,8 @@ pub(super) struct DatadirOpt {
 pub(super) struct ProjectOpt {
     /// Which project to save the entry under
     #[structopt(
-        short = "P",
+        short = "p",
         long = "project",
-        global = true,
         value_name = "project",
         default_value = "default",
         env = "TODUST_PROJECT"
