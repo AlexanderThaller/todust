@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Todust - Add Entry - {{ project }}</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/main.css">
+  </head>
+
+  <body>
+    <h1>Add Entry - {{ project }}</h1>
+
+    <form action="/api/v1/project/add/entry/{{ project }}" method="post">
+      <textarea id="text" name="text" rows=10 placeholder="Text of the todo entry" required=true></textarea>
+
+      <br><br>
+
+      <input type="submit" value="Add Entry" />
+    </form>
+
+    <hr>
+
+    <a href="/project/{{ project }}">back</a>
+  </body>
+</html>

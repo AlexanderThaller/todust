@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use tide::forms::ContextExt;
 use uuid::Uuid;
 use crate::{
     store::Store,
@@ -16,6 +18,8 @@ use tide::{
     Context,
     EndpointResult,
 };
+use crate::entry::Entry;
+use crate::entry::Metadata;
 
 pub(super) struct WebService {
     store: CsvStore,
@@ -43,6 +47,9 @@ impl WebService {
         let entry_raw = include_str!("resources/html/entry.html.tera");
         templates.add_raw_template("entry.html", entry_raw).unwrap();
 
+        let project_add_entry_raw = include_str!("resources/html/project_add_entry.html.tera");
+        templates.add_raw_template("project_add_entry.html", project_add_entry_raw).unwrap();
+
         templates.register_filter("asciidoc_header", templating::asciidoc_header);
         templates.register_filter("asciidoc_to_html", templating::asciidoc_to_html);
         templates.register_filter("format_duration_since", templating::format_duration_since);
@@ -63,11 +70,13 @@ impl WebService {
         app.at("/").get(handler_index);
 
         app.at("/project/:project").get(handler_project);
+        app.at("/project/add/entry/:project").get(handler_project_add_entry);
         app.at("/entry/:uuid").get(handler_entry);
 
         app.at("/api/v1/project/entries/:project").get(handler_api_v1_project_entries);
         app.at("/api/v1/entry/mark/done/:uuid").get(handler_api_v1_mark_entry_done);
         app.at("/api/v1/entry/mark/active/:uuid").get(handler_api_v1_mark_entry_active);
+        app.at("/api/v1/project/add/entry/:project").post(handler_api_v1_project_add_entry);
 
         app.at("/static/css/main.css").get(handler_static_css_main);
         app.at("/static/css/font-awesome.min.css").get(handler_static_css_font_awesome);
@@ -124,6 +133,28 @@ async fn handler_project(context: Context<WebService>) -> EndpointResult {
         .state()
         .templates
         .render("project.html", &template_context)
+        .unwrap();
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/html")
+        .body(output.as_bytes().into())
+        .unwrap())
+}
+
+async fn handler_project_add_entry(context: Context<WebService>) -> EndpointResult {
+    let project: String = context
+        .param("project")
+        .client_err()
+        .unwrap_or_else(|_| "work".to_string());
+
+    let mut template_context = tera::Context::new();
+    template_context.insert("project", &project);
+
+    let output = context
+        .state()
+        .templates
+        .render("project_add_entry.html", &template_context)
         .unwrap();
 
     Ok(Response::builder()
@@ -198,6 +229,36 @@ async fn handler_api_v1_mark_entry_active(context: Context<WebService>) -> Endpo
         .header("Content-Type", "text/plain")
         .header("Location", location)
         .body("entry updated to be active".into())
+        .unwrap())
+}
+
+async fn handler_api_v1_project_add_entry(mut context: Context<WebService>) -> EndpointResult {
+    #[derive(Deserialize, Debug)]
+    struct Message {
+        text: String,
+    }
+
+    let project: String = context.param("project").client_err()?;
+    let message: Message = context.body_form().await?;
+
+    let entry = Entry {
+        text: message.text,
+        metadata: Metadata {
+            project,
+            ..Metadata::default()
+        },
+    };
+
+    let uuid = entry.metadata.uuid;
+
+    context.state().store
+        .add_entry(entry).unwrap();
+
+    Ok(Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header("Content-Type", "text/plain")
+        .header("Location", format!("/entry/{}", uuid))
+        .body("entry updated to be done".into())
         .unwrap())
 }
 

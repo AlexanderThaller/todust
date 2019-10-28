@@ -36,6 +36,7 @@
 
     <hr>
 
-    <a href="/">back</a>
+    <a href="/">back</a> |
+    <a href="/project/add/entry/{{ project }}">add enty</a>
   </body>
 </html>
