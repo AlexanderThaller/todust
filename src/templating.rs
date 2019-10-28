@@ -111,3 +111,32 @@ pub(super) fn asciidoc_header(value: Value, _: HashMap<String, Value>) -> TeraRe
 
     Ok(to_value(&out).unwrap())
 }
+
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
+pub(super) fn some_or_dash(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+    let value = try_get_value!("some_or_dash", "value", Option<String>, value);
+
+    let out = match value {
+        None => "-".to_string(),
+
+        Some(value) => {
+            if value.is_empty() {
+                "-".to_string()
+            } else {
+                value
+            }
+        }
+    };
+
+    Ok(to_value(&out).unwrap())
+}
+
+pub(super) fn some(value: Option<Value>, _params: Vec<Value>) -> TeraResult<bool> {
+    Ok(match value {
+        None => false,
+        Some(value) => match value {
+            Value::Null => false,
+            _ => true,
+        },
+    })
+}

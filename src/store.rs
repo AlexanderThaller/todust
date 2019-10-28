@@ -12,6 +12,8 @@ pub(super) trait Store {
     fn add_entry(&self, entry: Entry) -> Result<(), Error>;
     fn add_metadata(&self, metadata: Metadata) -> Result<(), Error>;
     fn entry_done(&self, entry_id: usize, project: &str) -> Result<(), Error>;
+    fn entry_done_by_uuid(&self, uuid: Uuid) -> Result<(), Error>;
+    fn entry_active_by_uuid(&self, uuid: Uuid) -> Result<(), Error>;
     fn get_active_entries(&self, project: &str) -> Result<Entries, Error>;
     fn get_done_entries(&self, project: &str) -> Result<Entries, Error>;
     fn get_all_entries(&self) -> Result<Entries, Error>;

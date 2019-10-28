@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use crate::{
     store::Store,
     store_csv::CsvStore,
@@ -47,6 +48,9 @@ impl WebService {
         templates.register_filter("format_duration_since", templating::format_duration_since);
         templates.register_filter("lines", templating::lines);
         templates.register_filter("single_line", templating::single_line);
+        templates.register_filter("some_or_dash", templating::some_or_dash);
+
+        templates.register_tester("some", templating::some);
 
         Ok(templates)
     }
@@ -61,7 +65,9 @@ impl WebService {
         app.at("/project/:project").get(handler_project);
         app.at("/entry/:uuid").get(handler_entry);
 
-        app.at("/api/v1/list/:project").get(handler_api_v1_list);
+        app.at("/api/v1/project/entries/:project").get(handler_api_v1_project_entries);
+        app.at("/api/v1/entry/mark/done/:uuid").get(handler_api_v1_mark_entry_done);
+        app.at("/api/v1/entry/mark/active/:uuid").get(handler_api_v1_mark_entry_active);
 
         app.at("/static/css/main.css").get(handler_static_css_main);
         app.at("/static/css/font-awesome.min.css").get(handler_static_css_font_awesome);
@@ -157,12 +163,42 @@ async fn handler_entry(context: Context<WebService>) -> EndpointResult {
         .unwrap())
 }
 
-async fn handler_api_v1_list(context: Context<WebService>) -> EndpointResult {
+async fn handler_api_v1_project_entries(context: Context<WebService>) -> EndpointResult {
     let project: String = context.param("project").client_err()?;
 
     let entries = context.state().store.get_active_entries(&project).unwrap();
 
     Ok(response::json(entries))
+}
+
+async fn handler_api_v1_mark_entry_done(context: Context<WebService>) -> EndpointResult {
+    let uuid: Uuid = context.param("uuid").client_err()?;
+
+    context.state().store.entry_done_by_uuid(uuid).unwrap();
+
+    let location = format!("/entry/{}", uuid);
+
+    Ok(Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header("Content-Type", "text/plain")
+        .header("Location", location)
+        .body("entry updated to be done".into())
+        .unwrap())
+}
+
+async fn handler_api_v1_mark_entry_active(context: Context<WebService>) -> EndpointResult {
+    let uuid: Uuid = context.param("uuid").client_err()?;
+
+    context.state().store.entry_active_by_uuid(uuid).unwrap();
+
+    let location = format!("/entry/{}", uuid);
+
+    Ok(Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header("Content-Type", "text/plain")
+        .header("Location", location)
+        .body("entry updated to be active".into())
+        .unwrap())
 }
 
 async fn handler_static_css_main(_context: Context<WebService>) -> EndpointResult {

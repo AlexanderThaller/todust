@@ -234,6 +234,42 @@ impl Store for CsvStore {
         Ok(())
     }
 
+    fn entry_done_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
+        let entry = self
+            .get_entry_by_uuid(&uuid)
+            .context("can not get entry from uuid")?;
+
+        let new = Metadata {
+            finished: Some(Utc::now()),
+            last_change: Utc::now(),
+            ..entry.metadata
+        };
+
+        self.index
+            .insert_entry(&new)
+            .context("can not add entry to done index")?;
+
+        Ok(())
+    }
+
+    fn entry_active_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
+        let entry = self
+            .get_entry_by_uuid(&uuid)
+            .context("can not get entry from uuid")?;
+
+        let new = Metadata {
+            finished: None,
+            last_change: Utc::now(),
+            ..entry.metadata
+        };
+
+        self.index
+            .insert_entry(&new)
+            .context("can not add entry to active index")?;
+
+        Ok(())
+    }
+
     fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
         let entries = self
             .get_entries(project)?

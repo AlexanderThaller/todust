@@ -11,10 +11,6 @@
   </head>
 
   <body>
-    <a href="/api/v1/entry/done/{{ entry.metadata.uuid }}">done</a>
-
-    <hr>
-
     <h1>Entry - {{ entry.text | single_line | truncate(length=100) }}</h1>
 
     <h2>Metadata</h2>
@@ -23,14 +19,20 @@
     <b>Last Change:</b> {{ entry.metadata.last_change }}<br>
     <b>Started:</b> {{ entry.metadata.started }}<br>
     <b>Active Duration:</b> {{ entry.metadata.started | format_duration_since }}<br>
-    <b>Finished:</b> {{ entry.metadata.finished }}<br>
-    <b>Due:</b> {{ entry.metadata.due }}
+    <b>Finished:</b> {{ entry.metadata.finished | some_or_dash }}<br>
+    <b>Due:</b> {{ entry.metadata.due | some_or_dash }}
 
     <h2>Text</h2>
     {{ entry.text | asciidoc_header | asciidoc_to_html }}
 
     <hr>
 
-    <a href="/project/{{ entry.metadata.project }}">back</a>
+    <a href="/project/{{ entry.metadata.project }}">back</a> |
+
+    {% if entry.metadata.finished is some %}
+    <a href="/api/v1/entry/mark/active/{{ entry.metadata.uuid }}">mark active</a>
+    {% else %}
+    <a href="/api/v1/entry/mark/done/{{ entry.metadata.uuid }}">mark done</a>
+    {% endif %}
   </body>
 </html>
