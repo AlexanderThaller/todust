@@ -272,7 +272,7 @@ async fn handler_api_v1_project_add_entry(mut context: Context<WebService>) -> E
     let message: Message = context.body_form().await?;
 
     let entry = Entry {
-        text: message.text,
+        text: message.text.replace("\r", ""),
         metadata: Metadata {
             project,
             ..Metadata::default()
