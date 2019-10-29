@@ -38,8 +38,6 @@ impl WebService {
     fn open_templates() -> Result<Tera, Error> {
         let mut templates = tera::Tera::default();
 
-        templates.autoescape_on(vec![]);
-
         let index_raw = include_str!("resources/html/index.html.tera");
         templates.add_raw_template("index.html", index_raw).unwrap();
 
