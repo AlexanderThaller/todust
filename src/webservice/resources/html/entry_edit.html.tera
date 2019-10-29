@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Todust - Edit Entry - {{ entry.text | single_line | truncate(length=50) }}</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/main.css">
+  </head>
+
+  <body>
+    <h1>Edit Entry - {{ entry.text | single_line | truncate(length=50) }}</h1>
+
+    <form action="/api/v1/entry/edit/{{ entry.metadata.uuid }}" method="post">
+      <textarea id="text" name="text" rows=10 placeholder="Text of the todo entry" required=true>{{ entry.text }}</textarea>
+
+      <br>
+
+      <input type="checkbox" name="update_time">
+      <label for="update_time">update time</label>
+
+      <br><br>
+
+      <input type="submit" value="Update Entry" />
+    </form>
+
+    <hr>
+
+    <a href="/entry/{{ entry.metadata.uuid }}">back</a>
+  </body>
+</html>

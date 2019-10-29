@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Todust - Entry - {{ entry.text | single_line | truncate(length=100) }}</title>
+    <title>Todust - Entry - {{ entry.text | single_line | truncate(length=50) }}</title>
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
   </head>
 
   <body>
-    <h1>Entry - {{ entry.text | single_line | truncate(length=100) }}</h1>
+    <h1>Entry - {{ entry.text | single_line | truncate(length=50) }}</h1>
 
     <h2>Metadata</h2>
     <b>Project:</b> <a href="/project/{{ entry.metadata.project }}">{{ entry.metadata.project}}</a><br>
@@ -33,6 +33,8 @@
     <a href="/api/v1/entry/mark/active/{{ entry.metadata.uuid }}">mark active</a>
     {% else %}
     <a href="/api/v1/entry/mark/done/{{ entry.metadata.uuid }}">mark done</a>
-    {% endif %}
+    {% endif %} |
+
+    <a href="/entry/edit/{{ entry.metadata.uuid }}">edit</a>
   </body>
 </html>
