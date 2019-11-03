@@ -102,7 +102,7 @@ impl WebService {
         app.at("/static/fonts/fontawesome-webfont.woff2")
             .get(handler_static_fonts_fontawesome_webfont_woff2);
 
-        app.at("/favicon.ico").get(handler_404);
+        app.at("/favicon.ico").get(handler_favicon_ico);
 
         Ok(app.run(binding)?)
     }
@@ -414,10 +414,16 @@ async fn handler_static_fonts_fontawesome_webfont_woff2(
         .unwrap())
 }
 
-async fn handler_404(_context: Context<WebService>) -> EndpointResult {
+async fn handler_favicon_ico(
+    _context: Context<WebService>,
+) -> EndpointResult {
     Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
-        .header("Content-Type", "text/plain")
-        .body("404 - not found".into())
+        .status(StatusCode::OK)
+        .header("Content-Type", "image/x-icon")
+        .body(
+            include_bytes!("resources/img/favicon.ico")
+                .to_vec()
+                .into(),
+        )
         .unwrap())
 }
