@@ -58,7 +58,7 @@ impl CsvStore {
 
         std::fs::create_dir_all(datadir)?;
 
-        let info = new.get_info()?;
+        let info = new.get_settings()?;
 
         if info.store_version != 1 {
             bail!("wrong store version")
@@ -75,8 +75,8 @@ impl CsvStore {
         index_file
     }
 
-    fn get_info(&self) -> Result<StoreInfo, Error> {
-        let path = self.info_path();
+    fn get_settings(&self) -> Result<StoreInfo, Error> {
+        let path = self.settings_path();
 
         if !path.exists() {
             let info = StoreInfo::default();
@@ -99,10 +99,10 @@ impl CsvStore {
         Ok(info)
     }
 
-    fn info_path(&self) -> PathBuf {
+    fn settings_path(&self) -> PathBuf {
         let mut path = PathBuf::new();
         path.push(&self.datadir);
-        path.push(".info");
+        path.push(".settings");
 
         path
     }

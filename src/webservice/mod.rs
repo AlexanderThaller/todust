@@ -17,7 +17,7 @@ use serde::Deserialize;
 use tera::Tera;
 use tide::{
     error::ResultExt,
-    forms::ContextExt as OtherContextExt,
+    forms::ExtractForms,
     response,
     Context,
     EndpointResult,
@@ -75,7 +75,7 @@ impl WebService {
     pub(super) fn run(self, binding: std::net::SocketAddr) -> Result<(), Error> {
         let mut app = tide::App::with_state(self);
 
-        app.middleware(tide::middleware::RequestLogger::new());
+        app.middleware(tide::middleware::RootLogger::new());
 
         app.at("/").get(handler_index);
 
@@ -104,7 +104,7 @@ impl WebService {
 
         app.at("/favicon.ico").get(handler_favicon_ico);
 
-        Ok(app.run(binding)?)
+        Ok(app.serve(binding)?)
     }
 }
 
@@ -138,8 +138,6 @@ async fn handler_index(context: Context<WebService>) -> EndpointResult {
 async fn handler_project(context: Context<WebService>) -> EndpointResult {
     let project: String = context.param("project").client_err()?;
 
-    dbg!(context.uri().query());
-
     let show_done = match context.uri().query() {
         Some(parameters) => parameters
             .split('&')
@@ -152,8 +150,6 @@ async fn handler_project(context: Context<WebService>) -> EndpointResult {
             .unwrap_or(false),
         None => false,
     };
-
-    dbg!(show_done);
 
     let entries_active = context.state().store.get_active_entries(&project).unwrap();
     let entries_done = if show_done {
@@ -414,16 +410,10 @@ async fn handler_static_fonts_fontawesome_webfont_woff2(
         .unwrap())
 }
 
-async fn handler_favicon_ico(
-    _context: Context<WebService>,
-) -> EndpointResult {
+async fn handler_favicon_ico(_context: Context<WebService>) -> EndpointResult {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "image/x-icon")
-        .body(
-            include_bytes!("resources/img/favicon.ico")
-                .to_vec()
-                .into(),
-        )
+        .body(include_bytes!("resources/img/favicon.ico").to_vec().into())
         .unwrap())
 }

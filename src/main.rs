@@ -75,9 +75,7 @@ fn run() -> Result<(), Error> {
     {
         let config = simplelog::ConfigBuilder::new().build();
 
-        if let Err(err) =
-            { simplelog::TermLogger::init(opt.log_level, config, simplelog::TerminalMode::Stderr) }
-        {
+        if let Err(err) = { simplelog::SimpleLogger::init(opt.log_level, config) } {
             eprintln!("can not initialize logger: {}", err);
             ::std::process::exit(1);
         }
