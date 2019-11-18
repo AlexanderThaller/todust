@@ -9,7 +9,7 @@ use failure::{
     bail,
     Error,
 };
-use serde_derive::{
+use serde::{
     Deserialize,
     Serialize,
 };

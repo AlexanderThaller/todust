@@ -7,7 +7,10 @@ use crate::{
     },
     helper::confirm,
     store::Store,
-    store_csv::index::CsvIndex,
+    store_csv::{
+        index::CsvIndex,
+        vcs::VcsSettings,
+    },
 };
 use chrono::Utc;
 use failure::{
@@ -23,7 +26,7 @@ use log::{
     info,
     trace,
 };
-use serde_derive::{
+use serde::{
     Deserialize,
     Serialize,
 };
@@ -47,24 +50,26 @@ use uuid::Uuid;
 pub(crate) struct CsvStore {
     datadir: PathBuf,
     index: CsvIndex,
+    settings: StoreSettings,
 }
 
 impl CsvStore {
     pub(crate) fn open<P: AsRef<Path>>(datadir: P) -> Result<Self, Error> {
-        let new = Self {
-            datadir: datadir.as_ref().to_path_buf(),
-            index: CsvIndex::new(CsvStore::get_index_filename(&datadir)),
-        };
+        std::fs::create_dir_all(&datadir)?;
 
-        std::fs::create_dir_all(datadir)?;
+        let settings = CsvStore::get_settings(&datadir)?;
 
-        let info = new.get_settings()?;
+        dbg!(&settings);
 
-        if info.store_version != 1 {
+        if settings.store_version != 1 {
             bail!("wrong store version")
         }
 
-        Ok(new)
+        Ok(Self {
+            datadir: datadir.as_ref().to_path_buf(),
+            index: CsvIndex::new(CsvStore::get_index_filename(&datadir)),
+            settings,
+        })
     }
 
     fn get_index_filename<P: AsRef<Path>>(datadir: P) -> PathBuf {
@@ -75,11 +80,11 @@ impl CsvStore {
         index_file
     }
 
-    fn get_settings(&self) -> Result<StoreInfo, Error> {
-        let path = self.settings_path();
+    fn get_settings<P: AsRef<Path>>(datadir: P) -> Result<StoreSettings, Error> {
+        let path = CsvStore::settings_path(&datadir);
 
         if !path.exists() {
-            let info = StoreInfo::default();
+            let info = StoreSettings::default();
             let data = toml::to_string_pretty(&info)?;
 
             let mut file = fs::File::create(path)?;
@@ -99,10 +104,10 @@ impl CsvStore {
         Ok(info)
     }
 
-    fn settings_path(&self) -> PathBuf {
+    fn settings_path<P: AsRef<Path>>(datadir: P) -> PathBuf {
         let mut path = PathBuf::new();
-        path.push(&self.datadir);
-        path.push(".settings");
+        path.push(datadir);
+        path.push(".settings.toml");
 
         path
     }
@@ -202,6 +207,10 @@ impl Store for CsvStore {
             .context("can not write entry text to file")?;
 
         self.add_metadata(entry.metadata)?;
+
+        if let Some(vcs) = &self.settings.vcs {
+            vcs.commit(&self.datadir)?;
+        }
 
         Ok(())
     }
@@ -429,12 +438,16 @@ impl Store for CsvStore {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct StoreInfo {
+struct StoreSettings {
     store_version: usize,
+    vcs: Option<VcsSettings>,
 }
 
-impl Default for StoreInfo {
+impl Default for StoreSettings {
     fn default() -> Self {
-        Self { store_version: 1 }
+        Self {
+            store_version: 1,
+            vcs: Some(VcsSettings::default()),
+        }
     }
 }
