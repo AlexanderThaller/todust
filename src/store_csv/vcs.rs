@@ -1,3 +1,4 @@
+use log::debug;
 use serde::{
     Deserialize,
     Serialize,
@@ -33,12 +34,15 @@ impl VcsSettings {
 
         match self.vcs_type {
             VcsType::Git => {
+                debug!("staging all changes in the repo");
                 githelper::stage_all(&repo_path)?;
 
                 let message = "Autocommit changes";
+                debug!("commiting changes to repo");
                 githelper::commit(&repo_path, message)?;
 
                 if self.autopush {
+                    debug!("pushing changes to origin");
                     githelper::push_to_origin(&repo_path)?;
                 }
             }
