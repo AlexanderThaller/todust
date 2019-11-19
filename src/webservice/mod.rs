@@ -343,11 +343,8 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
                 .unwrap())
         }
     };
-    dbg!(&uuid);
 
     let message: Message = context.body_form().await?;
-
-    dbg!(&message);
 
     let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
 

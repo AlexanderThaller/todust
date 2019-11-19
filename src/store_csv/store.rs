@@ -59,8 +59,6 @@ impl CsvStore {
 
         let settings = CsvStore::get_settings(&datadir)?;
 
-        dbg!(&settings);
-
         if settings.store_version != 1 {
             bail!("wrong store version")
         }
