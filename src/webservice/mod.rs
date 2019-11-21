@@ -422,11 +422,7 @@ async fn handler_api_v1_entry_move_project(mut context: Context<WebService>) -> 
         new_project: String,
     }
 
-    dbg!("blabla");
-
     let message: Message = context.body_form().await?;
-
-    dbg!(&message);
 
     let uuid: uuid::Uuid = match context.param("uuid").client_err() {
         Ok(uuid) => uuid,

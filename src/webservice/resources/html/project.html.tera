@@ -17,7 +17,7 @@
       {% for entry in entries_active %}
       <li>
         <a href="/entry/{{ entry.metadata.uuid }}">
-          {{ entry.text | single_line | truncate(length=100) }}
+          {{ entry.text | single_line | truncate(length=200) }}
         </a>
       </li>
       {% endfor %}
@@ -29,7 +29,7 @@
       {% for entry in entries_done %}
       <li>
         <a href="/entry/{{ entry.metadata.uuid }}">
-          {{ entry.text | single_line | truncate(length=100) }}
+          {{ entry.text | single_line | truncate(length=200) }}
         </a>
       </li>
       {% endfor %}
