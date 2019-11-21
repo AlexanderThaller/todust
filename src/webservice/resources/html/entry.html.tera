@@ -35,6 +35,7 @@
     <a href="/api/v1/entry/mark/done/{{ entry.metadata.uuid }}">mark done</a>
     {% endif %} |
 
-    <a href="/entry/edit/{{ entry.metadata.uuid }}">edit</a>
+    <a href="/entry/edit/{{ entry.metadata.uuid }}">edit</a> |
+    <a href="/entry/move_project/{{ entry.metadata.uuid }}">move</a>
   </body>
 </html>

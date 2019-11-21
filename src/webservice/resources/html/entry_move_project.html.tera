@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Todust - Move Entry to Project - {{ entry.text | single_line | truncate(length=50) }}</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="/static/css/main.css">
+  </head>
+
+  <body>
+    <h1>Move Entry to Project - {{ entry.text | single_line | truncate(length=50) }}</h1>
+
+    <form action="/api/v1/entry/move_project/{{ entry.metadata.uuid }}" method="post">
+
+      Old project: {{ entry.metadata.project }}
+
+      <br><br>
+
+      <label for="projects">New Project</label>
+
+      <input type="text" list="projects" name="new_project" />
+      <datalist id="projects", name="projects">
+        {% for project in projects %}
+        <option value="{{ project }}">{{ project }}</option>
+        {% endfor %}
+      </datalist>
+
+      <br><br>
+
+      <input type="submit" value="Update Entry" />
+    </form>
+
+    <hr>
+
+    <a href="/entry/{{ entry.metadata.uuid }}">back</a>
+  </body>
+</html>

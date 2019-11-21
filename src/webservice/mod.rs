@@ -55,6 +55,11 @@ impl WebService {
             .add_raw_template("entry_edit.html", entry_edit_raw)
             .unwrap();
 
+        let entry_move_project_raw = include_str!("resources/html/entry_move_project.html.tera");
+        templates
+            .add_raw_template("entry_move_project.html", entry_move_project_raw)
+            .unwrap();
+
         let project_add_entry_raw = include_str!("resources/html/project_add_entry.html.tera");
         templates
             .add_raw_template("project_add_entry.html", project_add_entry_raw)
@@ -84,6 +89,7 @@ impl WebService {
             .get(handler_project_add_entry);
         app.at("/entry/:uuid").get(handler_entry);
         app.at("/entry/edit/:uuid").get(handler_entry_edit);
+        app.at("/entry/move_project/:uuid").get(handler_entry_move_project);
 
         app.at("/api/v1/project/entries/:project")
             .get(handler_api_v1_project_entries);
@@ -95,6 +101,8 @@ impl WebService {
             .post(handler_api_v1_project_add_entry);
         app.at("/api/v1/entry/edit/:uuid")
             .post(handler_api_v1_entry_edit);
+        app.at("/api/v1/entry/move_project/:uuid")
+            .post(handler_api_v1_entry_move_project);
 
         app.at("/static/css/main.css").get(handler_static_css_main);
         app.at("/static/css/font-awesome.min.css")
@@ -259,6 +267,40 @@ async fn handler_entry_edit(context: Context<WebService>) -> EndpointResult {
         .unwrap())
 }
 
+async fn handler_entry_move_project(context: Context<WebService>) -> EndpointResult {
+    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "text/plain")
+                .body("500 - no uuid found".into())
+                .unwrap())
+        }
+    };
+
+    let entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let mut projects = context.state().store.get_projects().unwrap();
+    projects.sort();
+    projects.dedup();
+
+    let mut template_context = tera::Context::new();
+    template_context.insert("entry", &entry);
+    template_context.insert("projects", &projects);
+
+    let output = context
+        .state()
+        .templates
+        .render("entry_move_project.html", &template_context)
+        .unwrap();
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/html")
+        .body(output.as_bytes().into())
+        .unwrap())
+}
+
 async fn handler_api_v1_project_entries(context: Context<WebService>) -> EndpointResult {
     let project: String = context.param("project").client_err()?;
 
@@ -373,6 +415,51 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
         .body("entry text updated".into())
         .unwrap())
 }
+
+async fn handler_api_v1_entry_move_project(mut context: Context<WebService>) -> EndpointResult {
+    #[derive(Deserialize, Debug)]
+    struct Message {
+        new_project: String,
+    }
+
+    dbg!("blabla");
+
+    let message: Message = context.body_form().await?;
+
+    dbg!(&message);
+
+    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            return Ok(Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "text/plain")
+                .body("500 - no uuid found".into())
+                .unwrap())
+        }
+    };
+
+    let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+
+    let new_entry = Entry {
+            metadata: Metadata {
+                project: message.new_project,
+                last_change: Utc::now(),
+                ..old_entry.metadata
+            },
+            ..old_entry
+        };
+
+    context.state().store.update_entry(new_entry).unwrap();
+
+    Ok(Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header("Content-Type", "text/plain")
+        .header("Location", format!("/entry/{}", uuid))
+        .body("entry text updated".into())
+        .unwrap())
+}
+
 async fn handler_static_css_main(_context: Context<WebService>) -> EndpointResult {
     Ok(Response::builder()
         .status(StatusCode::OK)
