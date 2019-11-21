@@ -11,6 +11,20 @@
   </head>
 
   <body>
+
+    <a href="/project/{{ entry.metadata.project }}">back</a> |
+
+    {% if entry.metadata.finished is some %}
+    <a href="/api/v1/entry/mark/active/{{ entry.metadata.uuid }}">mark active</a>
+    {% else %}
+    <a href="/api/v1/entry/mark/done/{{ entry.metadata.uuid }}">mark done</a>
+    {% endif %} |
+
+    <a href="/entry/edit/{{ entry.metadata.uuid }}">edit</a> |
+    <a href="/entry/move_project/{{ entry.metadata.uuid }}">move</a>
+
+    <hr>
+
     <h1>Entry - {{ entry.text | single_line | truncate(length=50) }}</h1>
 
     <h2>Metadata</h2>

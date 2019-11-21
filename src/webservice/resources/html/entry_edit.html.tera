@@ -10,6 +10,10 @@
   </head>
 
   <body>
+    <a href="/entry/{{ entry.metadata.uuid }}">back</a>
+
+    <hr>
+
     <h1>Edit Entry - {{ entry.text | single_line | truncate(length=50) }}</h1>
 
     <form action="/api/v1/entry/edit/{{ entry.metadata.uuid }}" method="post">

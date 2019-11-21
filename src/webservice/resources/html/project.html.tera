@@ -10,6 +10,16 @@
   </head>
 
   <body>
+    <a href="/">back</a> |
+    <a href="/project/add/entry/{{ project }}">add enty</a> |
+    {% if show_done %}
+    <a href="/project/{{ project }}">hide done</a>
+    {% else %}
+    <a href="/project/{{ project }}?show_done=true">show done</a>
+    {% endif %}
+
+    <hr>
+
     <h1>Todos - {{ project }}</h1>
 
     <h2>Active</h2>

@@ -10,6 +10,10 @@
   </head>
 
   <body>
+    <a href="/project/{{ project }}">back</a>
+
+    <hr>
+
     <h1>Add Entry - {{ project }}</h1>
 
     <form action="/api/v1/project/add/entry/{{ project }}" method="post">
