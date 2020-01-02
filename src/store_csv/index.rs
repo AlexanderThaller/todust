@@ -107,7 +107,7 @@ impl CsvIndex {
         Ok(metadata_entries)
     }
 
-    pub(crate) fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
+    pub(crate) fn add_metadata(&self, metadata: &Metadata) -> Result<(), Error> {
         self.insert_entry(&metadata)
             .context("can not add metadata to index")?;
 
@@ -123,7 +123,7 @@ impl CsvIndex {
         std::fs::remove_file(index_path).context("can not remove old index file")?;
 
         for entry in metadata {
-            self.add_metadata(entry)?;
+            self.add_metadata(&entry)?;
         }
 
         Ok(())

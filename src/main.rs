@@ -425,7 +425,7 @@ file",
         .into_iter()
         .chain(second_entries.into_iter())
         .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
+        .iter()
         .map(|entry| output_index.add_metadata(entry))
         .collect::<Result<(), Error>>()?;
 

@@ -204,10 +204,11 @@ impl Store for CsvStore {
         self.write_entry_text(&entry)
             .context("can not write entry text to file")?;
 
-        self.add_metadata(entry.metadata)?;
+        self.index.add_metadata(&entry.metadata)?;
 
         if let Some(vcs) = &self.settings.vcs {
-            vcs.commit(&self.datadir)?;
+            let message = format!("added entry with id {}", entry.metadata.uuid);
+            vcs.commit(&self.datadir, &message)?;
         }
 
         Ok(())
@@ -238,6 +239,11 @@ impl Store for CsvStore {
             .insert_entry(&new)
             .context("can not add entry to done index")?;
 
+        if let Some(vcs) = &self.settings.vcs {
+            let message = format!("marked entry with id {} as done", entry.metadata.uuid);
+            vcs.commit(&self.datadir, &message)?;
+        }
+
         Ok(())
     }
 
@@ -256,6 +262,11 @@ impl Store for CsvStore {
             .insert_entry(&new)
             .context("can not add entry to done index")?;
 
+        if let Some(vcs) = &self.settings.vcs {
+            let message = format!("marked entry with id {} as done", entry.metadata.uuid);
+            vcs.commit(&self.datadir, &message)?;
+        }
+
         Ok(())
     }
 
@@ -273,6 +284,11 @@ impl Store for CsvStore {
         self.index
             .insert_entry(&new)
             .context("can not add entry to active index")?;
+
+        if let Some(vcs) = &self.settings.vcs {
+            let message = format!("marked entry with id {} as done", entry.metadata.uuid);
+            vcs.commit(&self.datadir, &message)?;
+        }
 
         Ok(())
     }
@@ -408,15 +424,15 @@ impl Store for CsvStore {
         self.index.get_latest_metadata()
     }
 
-    fn add_metadata(&self, metadata: Metadata) -> Result<(), Error> {
-        self.index.add_metadata(metadata)
-    }
-
     fn run_cleanup(&self) -> Result<(), Error> {
         self.index.cleanup_duplicate_uuids()?;
         // TODO: This should remove index entries that dont have an entry file anymore.
         // self.cleanup_stale_index_entries()?;
         self.cleanup_unreferenced_entry()?;
+
+        if let Some(vcs) = &self.settings.vcs {
+            vcs.commit(&self.datadir, "ran cleanup")?;
+        }
 
         Ok(())
     }
@@ -428,7 +444,12 @@ impl Store for CsvStore {
         let metadata = self.index.get_latest_metadata()?;
 
         if !metadata.contains(&entry.metadata) {
-            self.add_metadata(entry.metadata)?;
+            self.index.add_metadata(&entry.metadata)?;
+        }
+
+        if let Some(vcs) = &self.settings.vcs {
+            let message = format!("updated entry with id {}", entry.metadata.uuid);
+            vcs.commit(&self.datadir, &message)?;
         }
 
         Ok(())

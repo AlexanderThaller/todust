@@ -11,6 +11,7 @@ use std::{
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct VcsSettings {
     autocommit: bool,
+    autopull: bool,
     autopush: bool,
     #[serde(rename = "type")]
     vcs_type: VcsType,
@@ -20,14 +21,19 @@ impl Default for VcsSettings {
     fn default() -> Self {
         Self {
             autocommit: true,
-            autopush: true,
+            autopull: false,
+            autopush: false,
             vcs_type: VcsType::Git,
         }
     }
 }
 
 impl VcsSettings {
-    pub(super) fn commit<P: AsRef<Path>>(&self, repo_path: P) -> Result<(), VcsSettingsError> {
+    pub(super) fn commit<P: AsRef<Path>>(
+        &self,
+        repo_path: P,
+        message: &str,
+    ) -> Result<(), VcsSettingsError> {
         if !self.autocommit {
             return Ok(());
         }
@@ -35,15 +41,20 @@ impl VcsSettings {
         match self.vcs_type {
             VcsType::Git => {
                 debug!("staging all changes in the repo");
-                githelper::stage_all(&repo_path)?;
+                githelper::add(repo_path.as_ref(), &std::path::PathBuf::from("."))
+                    .map_err(VcsSettingsError::Add)?;
 
-                let message = "Autocommit changes";
                 debug!("commiting changes to repo");
-                githelper::commit(&repo_path, message)?;
+                githelper::commit(repo_path.as_ref(), message).map_err(VcsSettingsError::Commit)?;
+
+                if self.autopull {
+                    debug!("pulling changes from origin");
+                    githelper::pull(repo_path.as_ref()).map_err(VcsSettingsError::Pull)?;
+                }
 
                 if self.autopush {
                     debug!("pushing changes to origin");
-                    githelper::push_to_origin(&repo_path)?;
+                    githelper::push(repo_path.as_ref()).map_err(VcsSettingsError::Push)?;
                 }
             }
         }
@@ -54,13 +65,28 @@ impl VcsSettings {
 
 #[derive(Debug)]
 pub(super) enum VcsSettingsError {
-    GitHelper(githelper::Error),
+    Add(std::io::Error),
+    Commit(std::io::Error),
+    Pull(std::io::Error),
+    Push(std::io::Error),
 }
 
 impl fmt::Display for VcsSettingsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VcsSettingsError::GitHelper(err) => write!(f, "{}", err),
+            VcsSettingsError::Add(err) => write!(f, "can not add files to git repository: {}", err),
+
+            VcsSettingsError::Commit(err) => {
+                write!(f, "can not commit changes to git repository: {}", err)
+            }
+
+            VcsSettingsError::Pull(err) => {
+                write!(f, "can not pull changes from upstream repository: {}", err)
+            }
+
+            VcsSettingsError::Push(err) => {
+                write!(f, "can not push changes to upstream repository: {}", err)
+            }
         }
     }
 }
@@ -68,12 +94,6 @@ impl fmt::Display for VcsSettingsError {
 impl std::error::Error for VcsSettingsError {
     fn description(&self) -> &str {
         ""
-    }
-}
-
-impl From<githelper::Error> for VcsSettingsError {
-    fn from(err: githelper::Error) -> Self {
-        VcsSettingsError::GitHelper(err)
     }
 }
 
