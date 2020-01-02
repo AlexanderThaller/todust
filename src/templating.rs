@@ -17,8 +17,7 @@ use tera::{
     Result as TeraResult,
 };
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn single_line(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let s = try_get_value!("single_line", "value", String, value);
 
     let s = s.replace("\n", " ");
@@ -26,8 +25,7 @@ pub(super) fn single_line(value: Value, _: HashMap<String, Value>) -> TeraResult
     Ok(to_value(&s).unwrap())
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn lines(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let mut out = String::new();
 
     let s = try_get_value!("lines", "value", String, value);
@@ -49,16 +47,17 @@ pub(super) fn lines(value: Value, _: HashMap<String, Value>) -> TeraResult<Value
     Ok(to_value(&out).unwrap())
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn format_duration_since(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn format_duration_since(
+    value: &Value,
+    _: &HashMap<String, Value>,
+) -> TeraResult<Value> {
     let started = try_get_value!("format_duration_since", "value", DateTime<Utc>, value);
     let duration = Utc::now().signed_duration_since(started);
 
     Ok(to_value(&helper::format_duration(duration)).unwrap())
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn asciidoc_to_html(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn asciidoc_to_html(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let input = try_get_value!("asciidoc_to_html", "value", String, value);
 
     let tmpdir = tempdir().expect("can not create tempdir");
@@ -85,8 +84,7 @@ pub(super) fn asciidoc_to_html(value: Value, _: HashMap<String, Value>) -> TeraR
     Ok(to_value(&out).unwrap())
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn asciidoc_header(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn asciidoc_header(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let input = try_get_value!("asciidoc_header", "value", String, value);
 
     let mut out = String::from(
@@ -112,8 +110,7 @@ pub(super) fn asciidoc_header(value: Value, _: HashMap<String, Value>) -> TeraRe
     Ok(to_value(&out).unwrap())
 }
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-pub(super) fn some_or_dash(value: Value, _: HashMap<String, Value>) -> TeraResult<Value> {
+pub(super) fn some_or_dash(value: &Value, _: &HashMap<String, Value>) -> TeraResult<Value> {
     let value = try_get_value!("some_or_dash", "value", Option<String>, value);
 
     let out = match value {
@@ -131,7 +128,7 @@ pub(super) fn some_or_dash(value: Value, _: HashMap<String, Value>) -> TeraResul
     Ok(to_value(&out).unwrap())
 }
 
-pub(super) fn some(value: Option<Value>, _params: Vec<Value>) -> TeraResult<bool> {
+pub(super) fn some(value: Option<&Value>, _params: &[Value]) -> TeraResult<bool> {
     Ok(match value {
         None => false,
         Some(value) => match value {
