@@ -83,6 +83,8 @@ impl WebService {
         app.middleware(tide::middleware::RootLogger::new());
 
         app.at("/").get(handler_index);
+        app.at("/_/health").get(handler_health);
+        app.at("/_/health").options(handler_health);
 
         app.at("/project/:project").get(handler_project);
         app.at("/project/add/entry/:project")
@@ -140,6 +142,14 @@ async fn handler_index(context: Context<WebService>) -> EndpointResult {
         .status(StatusCode::OK)
         .header("Content-Type", "text/html")
         .body(output.as_bytes().into())
+        .unwrap())
+}
+
+async fn handler_health(_context: Context<WebService>) -> EndpointResult {
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/plain")
+        .body("".into())
         .unwrap())
 }
 
