@@ -1,0 +1,7 @@
+store_version = 1
+
+[vcs]
+autocommit = true
+autopull = false
+autopush = false
+type = 'Git'
