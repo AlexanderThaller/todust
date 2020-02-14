@@ -20,10 +20,7 @@ use crate::{
     },
     opt::*,
     store::Store,
-    store_csv::{
-        CsvIndex,
-        CsvStore,
-    },
+    store_csv::CsvStore,
     webservice::WebService,
 };
 use chrono::Utc;
@@ -90,9 +87,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Done(sub_opt) => run_done(sub_opt),
         SubCommand::Due(sub_opt) => run_due(sub_opt),
         SubCommand::Edit(sub_opt) => run_edit(sub_opt),
-        SubCommand::Import(sub_opt) => run_import(sub_opt),
         SubCommand::List(sub_opt) => run_list(sub_opt),
-        SubCommand::MergeIndexFiles(sub_opt) => run_merge_index_files(sub_opt),
         SubCommand::Move(sub_opt) => run_move(sub_opt),
         SubCommand::Print(sub_opt) => run_print(sub_opt),
         SubCommand::Projects(sub_opt) => run_projects(sub_opt),
@@ -101,7 +96,7 @@ fn run() -> Result<(), Error> {
 }
 
 fn run_add(opt: AddSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let text = if let Some(opt_text) = &opt.text {
         opt_text.clone()
@@ -125,7 +120,7 @@ fn run_add(opt: AddSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_cleanup(opt: CleanupSubCommandOpts) -> Result<(), Error> {
-    CsvStore::open(&opt.datadir_opt.datadir)?.run_cleanup()
+    CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?.run_cleanup()
 }
 
 fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
@@ -136,7 +131,7 @@ fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_done(opt: DoneSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
     store.entry_done(opt.entry_id, &opt.project_opt.project)?;
 
     Ok(())
@@ -147,7 +142,7 @@ fn run_edit(opt: EditSubCommandOpts) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -182,7 +177,7 @@ editor",
 }
 
 fn run_list(opt: ListSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let entries = store
         .get_active_entries(&opt.project_opt.project)
@@ -212,7 +207,7 @@ fn run_list(opt: ListSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_move(opt: MoveSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -233,7 +228,7 @@ fn run_move(opt: MoveSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_print(opt: PrintSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let project = opt.project_opt.project;
 
@@ -277,7 +272,7 @@ fn run_projects(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_projects_simple(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -300,7 +295,7 @@ fn run_projects_simple(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_projects_normal(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -344,45 +339,8 @@ b->total.done_count, b->total.total_count]);
     Ok(())
 }
 
-fn run_import(opt: ImportSubCommandOpts) -> Result<(), Error> {
-    let from_store = CsvStore::open(&opt.from_path)?;
-    let new_store = CsvStore::open(&opt.datadir_opt.datadir)?;
-
-    let projects = if opt.import_all {
-        from_store
-            .get_projects()
-            .context("can not get projects from old store")?
-    } else {
-        vec![opt.project_opt.project]
-    };
-
-    for project in projects {
-        let entries = from_store
-            .get_entries(&project)
-            .context("can not get entries from old store")?;
-
-        for entry in entries {
-            trace!("entry: {:#?}", entry);
-
-            let new_entry = Entry {
-                metadata: Metadata {
-                    last_change: Utc::now(),
-                    ..entry.metadata
-                },
-                ..entry
-            };
-
-            new_store
-                .add_entry(new_entry)
-                .context("can not add entry to new store")?;
-        }
-    }
-
-    Ok(())
-}
-
 fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -402,38 +360,8 @@ fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_merge_index_files(opt: MergeIndexFilesSubCommandOpts) -> Result<(), Error> {
-    if opt.output.exists() {
-        if opt.force {
-            std::fs::remove_file(&opt.output).context(
-                "can not remove existing output
-file",
-            )?;
-        } else {
-            bail!("will not overwrite existing output file")
-        }
-    }
-
-    let first_index = CsvIndex::new(&opt.input_first);
-    let second_index = CsvIndex::new(&opt.input_second);
-    let output_index = CsvIndex::new(&opt.output);
-
-    let first_entries = first_index.get_metadata()?;
-    let second_entries = second_index.get_metadata()?;
-
-    first_entries
-        .into_iter()
-        .chain(second_entries.into_iter())
-        .collect::<std::collections::BTreeSet<_>>()
-        .iter()
-        .map(|entry| output_index.add_metadata(entry))
-        .collect::<Result<(), Error>>()?;
-
-    Ok(())
-}
-
 fn run_web(opt: WebSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
     WebService::open(store)?.run(opt.binding)
 }

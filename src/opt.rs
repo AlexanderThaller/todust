@@ -20,6 +20,12 @@ lazy_static! {
     static ref DEFAULT_DATADIR_STRING: &'static str = DEFAULT_DATADIR
         .to_str()
         .expect("can not convert xdg data home to string");
+    static ref DEFAULT_IDENTIFIER: std::ffi::OsString =
+        hostname::get().expect("can not get hostname of machine");
+    static ref DEFAULT_IDENTIFIER_STRING: &'static str = DEFAULT_IDENTIFIER
+        .as_os_str()
+        .to_str()
+        .expect("can not convert hostname to string");
 }
 
 /// Very basic todo cli tool that supports multiline todos.
@@ -57,6 +63,16 @@ pub(super) struct DatadirOpt {
         env = "TODUST_DATADIR"
     )]
     pub(super) datadir: PathBuf,
+
+    /// Identifier for the machine
+    #[structopt(
+        short = "i",
+        long = "identifier",
+        value_name = "identifier",
+        default_value = &DEFAULT_IDENTIFIER_STRING,
+        env = "TODUST_IDENTIFIER"
+    )]
+    pub(super) identifier: String,
 }
 
 #[derive(StructOpt, Debug)]
@@ -108,17 +124,9 @@ pub(super) enum SubCommand {
     #[structopt(name = "projects")]
     Projects(ProjectsSubCommandOpts),
 
-    /// Import entries from a different store
-    #[structopt(name = "import")]
-    Import(ImportSubCommandOpts),
-
     /// Set due date for entry
     #[structopt(name = "due")]
     Due(DueSubCommandOpts),
-
-    /// Take two index files and merge them together into a new index file
-    #[structopt(name = "merge-index-files")]
-    MergeIndexFiles(MergeIndexFilesSubCommandOpts),
 
     /// Generate shell completion for todust
     #[structopt(name = "completion")]
