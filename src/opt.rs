@@ -270,12 +270,12 @@ pub(super) struct ProjectsSubCommandOpts {
 
     /// Also print out projects without active todos. If not specified inactive
     /// projects will not be listed.
-    #[structopt(short = "i", long = "print_inactive")]
+    #[structopt(long = "print_inactive")]
     pub(super) print_inactive: bool,
 
     /// Only list the projects without statistics or the table formatting.
     /// Usefully for scripts.
-    #[structopt(short = "s", long = "simple")]
+    #[structopt(long = "simple")]
     pub(super) simple: bool,
 }
 

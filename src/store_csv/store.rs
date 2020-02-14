@@ -8,7 +8,7 @@ use crate::{
     helper::confirm,
     store::Store,
     store_csv::{
-        index::CsvIndex,
+        index::Index,
         vcs::VcsSettings,
     },
 };
@@ -49,7 +49,7 @@ use uuid::Uuid;
 
 pub(crate) struct CsvStore {
     datadir: PathBuf,
-    index: CsvIndex,
+    index: Index,
     settings: StoreSettings,
 }
 
@@ -65,7 +65,7 @@ impl CsvStore {
 
         Ok(Self {
             datadir: datadir.as_ref().to_path_buf(),
-            index: CsvIndex::new(CsvStore::index_folder(&datadir), identifier)?,
+            index: Index::new(CsvStore::index_folder(&datadir), identifier)?,
             settings,
         })
     }

@@ -4,7 +4,7 @@ mod opt;
 mod store;
 mod store_csv;
 mod templating;
-mod webservice;
+// mod webservice;
 
 use crate::{
     entry::{
@@ -21,7 +21,6 @@ use crate::{
     opt::*,
     store::Store,
     store_csv::CsvStore,
-    webservice::WebService,
 };
 use chrono::Utc;
 use failure::{
@@ -363,5 +362,7 @@ fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
 fn run_web(opt: WebSubCommandOpts) -> Result<(), Error> {
     let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
 
-    WebService::open(store)?.run(opt.binding)
+    // WebService::open(store)?.run(opt.binding)
+
+    unimplemented!()
 }
