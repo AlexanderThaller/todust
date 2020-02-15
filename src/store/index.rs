@@ -23,7 +23,7 @@ const INDEX_FILE_NAME: &str = "index.csv";
 
 impl Index {
     /// Create new index from given folder path and use given identifier to
-    /// split up the index
+    /// split up the index.
     pub(crate) fn new<P: AsRef<Path>>(folder_path: P, identifier: String) -> Result<Self, Error> {
         fs::create_dir_all(&folder_path)
             .map_err(|err| Error::CreateIndexFolder(folder_path.as_ref().to_path_buf(), err))?;
@@ -34,7 +34,7 @@ impl Index {
         })
     }
 
-    /// Add metadata to index
+    /// Add metadata to index.
     pub(crate) fn metadata_add(&self, metadata: &Metadata) -> Result<(), Error> {
         fs::create_dir_all(self.identifier_folder_path())
             .map_err(|err| Error::CreateIdentifierFolder(self.identifier_folder_path(), err))?;
@@ -64,7 +64,7 @@ impl Index {
     }
 
     /// Return only most recent metadata. This will be determined based on the
-    /// uuid of the entry and the last_change field
+    /// uuid of the entry and the last_change field.
     pub(crate) fn metadata_most_recent(&self) -> Result<BTreeSet<Metadata>, Error> {
         let metadata = self
             .metadata()?
@@ -78,7 +78,8 @@ impl Index {
         Ok(metadata)
     }
 
-    /// Compact files into singular index file and deduplicate entries
+    /// Compact files into singular index file and only keep latest state of
+    /// entries.
     pub(crate) fn compact(&self) -> Result<(), Error> {
         let metadata = self.metadata_most_recent()?;
 
@@ -110,7 +111,7 @@ impl Index {
         Ok(())
     }
 
-    /// Return a list of all projects referenced in the index
+    /// Return a list of all projects referenced in the index.
     pub(crate) fn projects(&self) -> Result<Vec<String>, Error> {
         let mut projects = self
             .metadata()?
@@ -124,7 +125,7 @@ impl Index {
         Ok(projects)
     }
 
-    /// Get all metadata stored in the index
+    /// Get all metadata stored in the index.
     /// The index is stored by identifier and current date to make it easier to
     /// sync over git and compact old entries in the future.
     fn metadata(&self) -> Result<BTreeSet<Metadata>, Error> {
@@ -158,7 +159,7 @@ impl Index {
         Ok(metadata)
     }
 
-    /// Deserialize metadata from given path
+    /// Deserialize metadata from given path.
     fn read_metadata_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<Metadata>, Error> {
         let file = std::fs::File::open(&file_path)
             .map_err(|err| Error::OpenIndexFile(file_path.as_ref().to_path_buf(), err))?;
@@ -169,7 +170,7 @@ impl Index {
             .map_err(|err| Error::ReadIndexFile(file_path.as_ref().to_path_buf(), err))
     }
 
-    /// Deserialize metadata from given reader
+    /// Deserialize metadata from given reader.
     fn read_metadata<R: std::io::Read>(reader: R) -> Result<Vec<Metadata>, csv::Error> {
         let mut csv_reader = csv::ReaderBuilder::new().from_reader(reader);
 
@@ -178,8 +179,8 @@ impl Index {
             .collect::<Result<Vec<Metadata>, csv::Error>>()
     }
 
-    /// Get todays file to store the index
-    /// Will live under {identifier_file_path}/{Year}-{Month}-{Day}.csv
+    /// Get todays file to store the index.
+    /// Will live under {identifier_file_path}/{Year}-{Month}-{Day}.csv.
     fn todays_index_path(&self) -> PathBuf {
         let mut index_path = self
             .identifier_folder_path()
@@ -190,7 +191,7 @@ impl Index {
         index_path
     }
 
-    /// Get path to identifier folder
+    /// Get path to identifier folder.
     fn identifier_folder_path(&self) -> PathBuf {
         self.folder_path
             .join(IDENTIFIER_FOLDER_NAME)
