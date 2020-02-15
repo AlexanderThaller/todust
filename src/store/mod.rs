@@ -60,7 +60,7 @@ pub(crate) struct Store {
 impl Store {
     pub(crate) fn open<P: AsRef<Path>>(
         datadir: P,
-        identifier: &str,
+        identifier: String,
         vcs_config: VcsConfig,
     ) -> Result<Self, Error> {
         std::fs::create_dir_all(&datadir)?;

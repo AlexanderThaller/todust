@@ -14,7 +14,7 @@ use std::{
 
 pub(crate) struct Index {
     folder_path: PathBuf,
-    identifier_folder_path: PathBuf,
+    identifier: String,
 }
 
 const IDENTIFIER_FILE_EXTENTION: &str = "csv";
@@ -24,27 +24,21 @@ const INDEX_FILE_NAME: &str = "index.csv";
 impl Index {
     /// Create new index from given folder path and use given identifier to
     /// split up the index
-    pub(crate) fn new<P: AsRef<Path>>(folder_path: P, identifier: &str) -> Result<Self, Error> {
+    pub(crate) fn new<P: AsRef<Path>>(folder_path: P, identifier: String) -> Result<Self, Error> {
         fs::create_dir_all(&folder_path)
             .map_err(|err| Error::CreateIndexFolder(folder_path.as_ref().to_path_buf(), err))?;
 
-        let identifier_folder_path = folder_path
-            .as_ref()
-            .join(IDENTIFIER_FOLDER_NAME)
-            .join(identifier);
-
-        fs::create_dir_all(&identifier_folder_path).map_err(|err| {
-            Error::CreateIdentifierFolder(folder_path.as_ref().to_path_buf(), err)
-        })?;
-
         Ok(Self {
             folder_path: folder_path.as_ref().to_path_buf(),
-            identifier_folder_path,
+            identifier,
         })
     }
 
     /// Add metadata to index
     pub(crate) fn metadata_add(&self, metadata: &Metadata) -> Result<(), Error> {
+        fs::create_dir_all(self.identifier_folder_path())
+            .map_err(|err| Error::CreateIdentifierFolder(self.identifier_folder_path(), err))?;
+
         let index_path = self.todays_index_path();
 
         let mut builder = csv::WriterBuilder::new();
@@ -86,7 +80,34 @@ impl Index {
 
     /// Compact files into singular index file and deduplicate entries
     pub(crate) fn compact(&self) -> Result<(), Error> {
-        unimplemented!()
+        let metadata = self.metadata_most_recent()?;
+
+        let tmp_dir = tempfile::tempdir().map_err(Error::CompactTempDir)?;
+        let tmp_path = tmp_dir.path().join(INDEX_FILE_NAME);
+
+        // In its own scope so the file will be flushed when the scope is closed.
+        {
+            let tmp_file = std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&tmp_path)
+                .map_err(Error::CompactTempFile)?;
+
+            let builder = csv::WriterBuilder::new();
+            let mut writer = builder.from_writer(tmp_file);
+
+            for entry in metadata {
+                writer.serialize(&entry).map_err(Error::SerializeMetadata)?;
+            }
+        }
+
+        let index_file_path = self.folder_path.join(INDEX_FILE_NAME);
+        std::fs::copy(tmp_path, index_file_path).map_err(Error::MoveCompactTempFile)?;
+
+        std::fs::remove_dir_all(self.folder_path.join(IDENTIFIER_FOLDER_NAME))
+            .map_err(Error::CleanupIdentifierFolder)?;
+
+        Ok(())
     }
 
     /// Return a list of all projects referenced in the index
@@ -161,29 +182,49 @@ impl Index {
     /// Will live under {identifier_file_path}/{Year}-{Month}-{Day}.csv
     fn todays_index_path(&self) -> PathBuf {
         let mut index_path = self
-            .identifier_folder_path
+            .identifier_folder_path()
             .join(chrono::Utc::now().date().to_string());
 
         index_path.set_extension(IDENTIFIER_FILE_EXTENTION);
 
         index_path
     }
+
+    /// Get path to identifier folder
+    fn identifier_folder_path(&self) -> PathBuf {
+        self.folder_path
+            .join(IDENTIFIER_FOLDER_NAME)
+            .join(&self.identifier)
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum Error {
+    CleanupIdentifierFolder(std::io::Error),
+    CompactTempDir(std::io::Error),
+    CompactTempFile(std::io::Error),
     CreateIdentifierFolder(PathBuf, std::io::Error),
     CreateIndexFolder(PathBuf, std::io::Error),
     GlobIteration(glob::GlobError),
     InvalidGlob(glob::PatternError),
-    SerializeMetadata(csv::Error),
+    MoveCompactTempFile(std::io::Error),
     OpenIndexFile(PathBuf, std::io::Error),
     ReadIndexFile(PathBuf, csv::Error),
+    SerializeMetadata(csv::Error),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Error::CleanupIdentifierFolder(err) => {
+                write!(f, "can not cleanup identifier folder: {}", err)
+            }
+            Error::CompactTempDir(err) => {
+                write!(f, "can not create tmp directory for compaction: {}", err)
+            }
+            Error::CompactTempFile(err) => {
+                write!(f, "can not open tmp file for compaction: {}", err)
+            }
             Error::CreateIdentifierFolder(path, err) => write!(
                 f,
                 "can not create identifier folder at path {:?}: {}",
@@ -196,6 +237,11 @@ impl std::fmt::Display for Error {
             ),
             Error::GlobIteration(err) => write!(f, "can not create glob iterator: {}", err),
             Error::InvalidGlob(err) => write!(f, "got invalid glob iterator: {}", err),
+            Error::MoveCompactTempFile(err) => write!(
+                f,
+                "can not replace index file with compacted tmp file: {}",
+                err
+            ),
             Error::OpenIndexFile(path, err) => {
                 write!(f, "can not open index file at path {:?}: {}", path, err)
             }

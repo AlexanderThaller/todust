@@ -99,7 +99,7 @@ fn run() -> Result<(), Error> {
 fn run_add(opt: AddSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -127,7 +127,7 @@ fn run_add(opt: AddSubCommandOpts, config: Config) -> Result<(), Error> {
 fn run_cleanup(opt: CleanupSubCommandOpts, config: Config) -> Result<(), Error> {
     Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?
     .run_cleanup()
@@ -143,7 +143,7 @@ fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
 fn run_done(opt: DoneSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
     store.entry_done(opt.entry_id, &opt.project_opt.project)?;
@@ -158,7 +158,7 @@ fn run_edit(opt: EditSubCommandOpts, config: Config) -> Result<(), Error> {
 
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -197,7 +197,7 @@ editor",
 fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -231,7 +231,7 @@ fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
 fn run_move(opt: MoveSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -256,7 +256,7 @@ fn run_move(opt: MoveSubCommandOpts, config: Config) -> Result<(), Error> {
 fn run_print(opt: PrintSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -304,7 +304,7 @@ fn run_projects(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error
 fn run_projects_simple(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -331,7 +331,7 @@ fn run_projects_simple(opt: ProjectsSubCommandOpts, config: Config) -> Result<()
 fn run_projects_normal(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -380,7 +380,7 @@ b->total.done_count, b->total.total_count]);
 fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
@@ -405,7 +405,7 @@ fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
 fn run_web(opt: WebSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
-        &config.identifier,
+        config.identifier,
         config.vcs_config,
     )?;
 
