@@ -24,10 +24,13 @@ impl Index {
     /// Create new index from given folder path and use given identifier to
     /// split up the index
     pub(crate) fn new<P: AsRef<Path>>(folder_path: P, identifier: &str) -> Result<Self, Error> {
-        fs::create_dir_all(&folder_path).map_err(Error::CreateIndexFolder)?;
+        fs::create_dir_all(&folder_path)
+            .map_err(|err| Error::CreateIndexFolder(folder_path.as_ref().to_path_buf(), err))?;
 
         let identifier_folder_path = folder_path.as_ref().join(IDENTIFIER_FOLDER_NAME);
-        fs::create_dir_all(&identifier_folder_path).map_err(Error::CreateIdentifierFolder)?;
+        fs::create_dir_all(&identifier_folder_path).map_err(|err| {
+            Error::CreateIdentifierFolder(folder_path.as_ref().to_path_buf(), err)
+        })?;
 
         let mut identifier_file_path = identifier_folder_path.join(identifier);
         identifier_file_path.set_extension(IDENTIFIER_FILE_EXTENTION);
@@ -53,7 +56,7 @@ impl Index {
             .append(true)
             .create(true)
             .open(&index_path)
-            .map_err(Error::OpenIndexFile)?;
+            .map_err(|err| Error::OpenIndexFile(index_path.to_path_buf(), err))?;
 
         let mut writer = builder.from_writer(index_file);
 
@@ -86,7 +89,16 @@ impl Index {
 
     /// Return a list of all projects referenced in the index
     pub(crate) fn projects(&self) -> Result<Vec<String>, Error> {
-        unimplemented!()
+        let mut projects = self
+            .metadata()?
+            .into_iter()
+            .map(|metadata| metadata.project)
+            .collect::<Vec<_>>();
+
+        projects.sort();
+        projects.dedup();
+
+        Ok(projects)
     }
 
     /// Get all metadata stored in the index
@@ -109,13 +121,8 @@ impl Index {
 
         let metadata = index_paths
             .into_iter()
-            .map(std::fs::File::open)
-            .collect::<Result<Vec<_>, std::io::Error>>()
-            .map_err(Error::OpenIndexFile)?
-            .into_iter()
-            .map(std::io::BufReader::new)
-            .map(Index::read_metadata)
-            .collect::<Result<Vec<_>, Error>>()?
+            .map(Index::read_metadata_file)
+            .collect::<Result<Vec<Vec<_>>, Error>>()?
             .into_iter()
             .flatten()
             .collect();
@@ -123,33 +130,61 @@ impl Index {
         Ok(metadata)
     }
 
+    /// Deserialize metadata from given path
+    fn read_metadata_file<P: AsRef<Path>>(file_path: P) -> Result<Vec<Metadata>, Error> {
+        let file = std::fs::File::open(&file_path)
+            .map_err(|err| Error::OpenIndexFile(file_path.as_ref().to_path_buf(), err))?;
+
+        let reader = std::io::BufReader::new(file);
+
+        Index::read_metadata(reader)
+            .map_err(|err| Error::ReadIndexFile(file_path.as_ref().to_path_buf(), err))
+    }
+
     /// Deserialize metadata from given reader
-    fn read_metadata<R: std::io::Read>(reader: R) -> Result<Vec<Metadata>, Error> {
+    fn read_metadata<R: std::io::Read>(reader: R) -> Result<Vec<Metadata>, csv::Error> {
         let mut csv_reader = csv::ReaderBuilder::new().from_reader(reader);
 
-        let entries = csv_reader
+        csv_reader
             .deserialize()
             .collect::<Result<Vec<Metadata>, csv::Error>>()
-            .map_err(Error::DeserializeMetadata)?;
-
-        Ok(entries)
     }
 }
 
 #[derive(Debug)]
 pub(crate) enum Error {
-    CreateIdentifierFolder(std::io::Error),
-    CreateIndexFolder(std::io::Error),
-    DeserializeMetadata(csv::Error),
-    OpenIndexFile(std::io::Error),
-    SerializeMetadata(csv::Error),
-    InvalidGlob(glob::PatternError),
+    CreateIdentifierFolder(PathBuf, std::io::Error),
+    CreateIndexFolder(PathBuf, std::io::Error),
     GlobIteration(glob::GlobError),
+    InvalidGlob(glob::PatternError),
+    SerializeMetadata(csv::Error),
+    OpenIndexFile(PathBuf, std::io::Error),
+    ReadIndexFile(PathBuf, csv::Error),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Error::CreateIdentifierFolder(path, err) => write!(
+                f,
+                "can not create identifier folder at path {:?}: {}",
+                path, err
+            ),
+            Error::CreateIndexFolder(path, err) => write!(
+                f,
+                "cant not create index folder at path {:?}: {}",
+                path, err
+            ),
+            Error::GlobIteration(err) => write!(f, "can not create glob iterator: {}", err),
+            Error::InvalidGlob(err) => write!(f, "got invalid glob iterator: {}", err),
+            Error::OpenIndexFile(path, err) => {
+                write!(f, "can not open index file at path {:?}: {}", path, err)
+            }
+            Error::SerializeMetadata(err) => write!(f, "cant not generate metadata: {}", err),
+            Error::ReadIndexFile(path, err) => {
+                write!(f, "can not read index file from path {:?}: {}", path, err)
+            }
+        }
     }
 }
 

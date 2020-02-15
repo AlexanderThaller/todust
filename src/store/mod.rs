@@ -1,3 +1,6 @@
+pub(super) mod index;
+mod vcs;
+
 use crate::{
     entry::{
         Entries,
@@ -6,8 +9,7 @@ use crate::{
         ProjectCount,
     },
     helper::confirm,
-    store::Store,
-    store_csv::{
+    store::{
         index::Index,
         vcs::VcsSettings,
     },
@@ -47,17 +49,17 @@ use std::{
 };
 use uuid::Uuid;
 
-pub(crate) struct CsvStore {
+pub(crate) struct Store {
     datadir: PathBuf,
     index: Index,
     settings: StoreSettings,
 }
 
-impl CsvStore {
+impl Store {
     pub(crate) fn open<P: AsRef<Path>>(datadir: P, identifier: &str) -> Result<Self, Error> {
         std::fs::create_dir_all(&datadir)?;
 
-        let settings = CsvStore::get_settings(&datadir)?;
+        let settings = Store::get_settings(&datadir)?;
 
         if settings.store_version != 1 {
             bail!("wrong store version")
@@ -65,7 +67,7 @@ impl CsvStore {
 
         Ok(Self {
             datadir: datadir.as_ref().to_path_buf(),
-            index: Index::new(CsvStore::index_folder(&datadir), identifier)?,
+            index: Index::new(Store::index_folder(&datadir), identifier)?,
             settings,
         })
     }
@@ -79,7 +81,7 @@ impl CsvStore {
     }
 
     fn get_settings<P: AsRef<Path>>(datadir: P) -> Result<StoreSettings, Error> {
-        let path = CsvStore::settings_path(&datadir);
+        let path = Store::settings_path(&datadir);
 
         if !path.exists() {
             let info = StoreSettings::default();
@@ -198,10 +200,8 @@ impl CsvStore {
 
         Ok(())
     }
-}
 
-impl Store for CsvStore {
-    fn add_entry(&self, entry: Entry) -> Result<(), Error> {
+    pub(crate) fn add_entry(&self, entry: Entry) -> Result<(), Error> {
         self.write_entry_text(&entry)
             .context("can not write entry text to file")?;
 
@@ -215,7 +215,7 @@ impl Store for CsvStore {
         Ok(())
     }
 
-    fn entry_done(&self, entry_id: usize, project: &str) -> Result<(), Error> {
+    pub(crate) fn entry_done(&self, entry_id: usize, project: &str) -> Result<(), Error> {
         // TODO: Change this to only fetch the metadata as we dont need to touch the
         // entry text.
         let entry = self
@@ -248,7 +248,7 @@ impl Store for CsvStore {
         Ok(())
     }
 
-    fn entry_done_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
+    pub(crate) fn entry_done_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
         let entry = self
             .get_entry_by_uuid(&uuid)
             .context("can not get entry from uuid")?;
@@ -271,7 +271,7 @@ impl Store for CsvStore {
         Ok(())
     }
 
-    fn entry_active_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
+    pub(crate) fn entry_active_by_uuid(&self, uuid: Uuid) -> Result<(), Error> {
         let entry = self
             .get_entry_by_uuid(&uuid)
             .context("can not get entry from uuid")?;
@@ -294,7 +294,7 @@ impl Store for CsvStore {
         Ok(())
     }
 
-    fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
+    pub(crate) fn get_active_entries(&self, project: &str) -> Result<Entries, Error> {
         let entries = self
             .get_entries(project)?
             .into_iter()
@@ -306,7 +306,7 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_done_entries(&self, project: &str) -> Result<Entries, Error> {
+    pub(crate) fn get_done_entries(&self, project: &str) -> Result<Entries, Error> {
         let entries = self
             .get_entries(project)?
             .into_iter()
@@ -318,27 +318,7 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_all_entries(&self) -> Result<Entries, Error> {
-        let projects = self
-            .get_projects()
-            .context("can not get projects from store")?;
-
-        let mut entries = BTreeSet::default();
-
-        for project in projects {
-            let project_entries = self
-                .get_entries(&project)
-                .context("can not get entries from old store")?;
-
-            for entry in project_entries {
-                entries.insert(entry);
-            }
-        }
-
-        Ok(entries.into())
-    }
-
-    fn get_entries(&self, project: &str) -> Result<Entries, Error> {
+    pub(crate) fn get_entries(&self, project: &str) -> Result<Entries, Error> {
         let metadata_entries = self
             .index
             .metadata_most_recent()
@@ -361,7 +341,7 @@ impl Store for CsvStore {
         Ok(entries)
     }
 
-    fn get_entry_by_uuid(&self, uuid: &Uuid) -> Result<Entry, Error> {
+    pub(crate) fn get_entry_by_uuid(&self, uuid: &Uuid) -> Result<Entry, Error> {
         let metadata = self
             .index
             .metadata_most_recent()?
@@ -374,7 +354,7 @@ impl Store for CsvStore {
         Ok(entry)
     }
 
-    fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
+    pub(crate) fn get_entry_by_id(&self, entry_id: usize, project: &str) -> Result<Entry, Error> {
         let entry = self
             .get_active_entries(project)
             .context("can not get project entries")?
@@ -384,7 +364,7 @@ impl Store for CsvStore {
         Ok(entry)
     }
 
-    fn get_projects_count(&self) -> Result<Vec<ProjectCount>, Error> {
+    pub(crate) fn get_projects_count(&self) -> Result<Vec<ProjectCount>, Error> {
         let metadata = self.index.metadata_most_recent()?;
 
         let mut count: HashMap<String, ProjectCount> = HashMap::default();
@@ -409,7 +389,7 @@ impl Store for CsvStore {
         Ok(count.into_iter().map(|(_, count)| count).collect())
     }
 
-    fn get_projects(&self) -> Result<Vec<String>, Error> {
+    pub(crate) fn get_projects(&self) -> Result<Vec<String>, Error> {
         let projects = self.index.projects().context("can not get projects")?;
 
         trace!("projects: {:#?}", projects);
@@ -417,7 +397,7 @@ impl Store for CsvStore {
         Ok(projects)
     }
 
-    fn run_cleanup(&self) -> Result<(), Error> {
+    pub(crate) fn run_cleanup(&self) -> Result<(), Error> {
         self.index.compact()?;
         // TODO: This should remove index entries that dont have an entry file anymore.
         // self.cleanup_stale_index_entries()?;
@@ -430,7 +410,7 @@ impl Store for CsvStore {
         Ok(())
     }
 
-    fn update_entry(&self, entry: Entry) -> Result<(), Error> {
+    pub(crate) fn update_entry(&self, entry: Entry) -> Result<(), Error> {
         self.write_entry_text(&entry)
             .context("can not write entry text to file")?;
 

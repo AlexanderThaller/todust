@@ -54,19 +54,37 @@ pub(super) enum Error {
     CreateConfigFile(std::io::Error),
     Deserialize(toml::de::Error),
     OpenConfigFile(std::io::Error),
+    ReadConfig(std::io::Error),
     Serialize(toml::ser::Error),
     WriteConfig(std::io::Error),
-    ReadConfig(std::io::Error),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Error::CreateConfigFile(err) => write!(f, "can not create config file: {}", err),
+            Error::Deserialize(err) => write!(f, "problem while parsing config file: {}", err),
+            Error::OpenConfigFile(err) => write!(f, "can not open config file: {}", err),
+            Error::ReadConfig(err) => write!(f, "problem while reading config file: {}", err),
+            Error::Serialize(err) => write!(f, "problem while generating config file: {}", err),
+            Error::WriteConfig(err) => write!(f, "problem while writing config file: {}", err),
+        }
     }
 }
 
 impl std::error::Error for Error {
     fn description(&self) -> &str {
         unimplemented!()
+    }
+
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::CreateConfigFile(err) => Some(err),
+            Error::Deserialize(err) => Some(err),
+            Error::OpenConfigFile(err) => Some(err),
+            Error::ReadConfig(err) => Some(err),
+            Error::Serialize(err) => Some(err),
+            Error::WriteConfig(err) => Some(err),
+        }
     }
 }

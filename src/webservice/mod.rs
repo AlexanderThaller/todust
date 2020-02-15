@@ -4,7 +4,6 @@ use crate::{
         Metadata,
     },
     store::Store,
-    store_csv::CsvStore,
     templating,
 };
 use chrono::Utc;
@@ -25,12 +24,12 @@ use tide::{
 use uuid::Uuid;
 
 pub(super) struct WebService {
-    store: CsvStore,
+    store: Store,
     templates: Tera,
 }
 
 impl WebService {
-    pub(super) fn open(store: CsvStore) -> Result<Self, Error> {
+    pub(super) fn open(store: Store) -> Result<Self, Error> {
         let templates = WebService::open_templates()?;
 
         Ok(Self { store, templates })
