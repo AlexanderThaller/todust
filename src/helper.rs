@@ -9,11 +9,7 @@ use failure::{
 };
 use std::fs::File;
 use tempfile::tempdir;
-use text_io::{
-    read,
-    try_read,
-    try_scan,
-};
+use text_io::read;
 
 pub(super) fn confirm(message: &str, default: bool) -> Result<bool, Error> {
     let default_text = if default { "Y/n" } else { "N/y" };
