@@ -96,8 +96,6 @@ impl Index {
             .join(IDENTIFIER_FOLDER_NAME)
             .join(format!("*.{}", IDENTIFIER_FILE_EXTENTION));
 
-        dbg!(&glob_string);
-
         let glob = glob::glob(&glob_string.to_string_lossy()).map_err(Error::InvalidGlob)?;
 
         let mut index_paths = glob
@@ -108,8 +106,6 @@ impl Index {
         if index_file_path.exists() {
             index_paths.push(index_file_path);
         }
-
-        dbg!(&index_paths);
 
         let metadata = index_paths
             .into_iter()

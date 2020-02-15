@@ -202,6 +202,7 @@ impl fmt::Display for Entries {
         tera.register_filter("single_line", templating::single_line);
         tera.register_filter("lines", templating::lines);
         tera.register_filter("format_duration_since", templating::format_duration_since);
+        tera.register_filter("some_or_dash", templating::some_or_dash);
 
         let rendered = tera
             .render("entries.asciidoc", &context)

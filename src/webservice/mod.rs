@@ -91,7 +91,8 @@ impl WebService {
             .get(handler_project_add_entry);
         app.at("/entry/:uuid").get(handler_entry);
         app.at("/entry/edit/:uuid").get(handler_entry_edit);
-        app.at("/entry/move_project/:uuid").get(handler_entry_move_project);
+        app.at("/entry/move_project/:uuid")
+            .get(handler_entry_move_project);
 
         app.at("/api/v1/project/entries/:project")
             .get(handler_api_v1_project_entries);
@@ -448,13 +449,13 @@ async fn handler_api_v1_entry_move_project(mut context: Context<WebService>) -> 
     let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
 
     let new_entry = Entry {
-            metadata: Metadata {
-                project: message.new_project,
-                last_change: Utc::now(),
-                ..old_entry.metadata
-            },
-            ..old_entry
-        };
+        metadata: Metadata {
+            project: message.new_project,
+            last_change: Utc::now(),
+            ..old_entry.metadata
+        },
+        ..old_entry
+    };
 
     context.state().store.update_entry(new_entry).unwrap();
 
