@@ -1,4 +1,5 @@
 use crate::entry::Metadata;
+use log::trace;
 use std::{
     collections::{
         BTreeMap,
@@ -13,12 +14,12 @@ use std::{
 
 pub(crate) struct Index {
     folder_path: PathBuf,
-    identifier_file_path: PathBuf,
+    identifier_folder_path: PathBuf,
 }
 
+const IDENTIFIER_FILE_EXTENTION: &str = "csv";
 const IDENTIFIER_FOLDER_NAME: &str = "identifier";
 const INDEX_FILE_NAME: &str = "index.csv";
-const IDENTIFIER_FILE_EXTENTION: &str = "csv";
 
 impl Index {
     /// Create new index from given folder path and use given identifier to
@@ -27,23 +28,24 @@ impl Index {
         fs::create_dir_all(&folder_path)
             .map_err(|err| Error::CreateIndexFolder(folder_path.as_ref().to_path_buf(), err))?;
 
-        let identifier_folder_path = folder_path.as_ref().join(IDENTIFIER_FOLDER_NAME);
+        let identifier_folder_path = folder_path
+            .as_ref()
+            .join(IDENTIFIER_FOLDER_NAME)
+            .join(identifier);
+
         fs::create_dir_all(&identifier_folder_path).map_err(|err| {
             Error::CreateIdentifierFolder(folder_path.as_ref().to_path_buf(), err)
         })?;
 
-        let mut identifier_file_path = identifier_folder_path.join(identifier);
-        identifier_file_path.set_extension(IDENTIFIER_FILE_EXTENTION);
-
         Ok(Self {
             folder_path: folder_path.as_ref().to_path_buf(),
-            identifier_file_path,
+            identifier_folder_path,
         })
     }
 
     /// Add metadata to index
     pub(crate) fn metadata_add(&self, metadata: &Metadata) -> Result<(), Error> {
-        let index_path = &self.identifier_file_path;
+        let index_path = self.todays_index_path();
 
         let mut builder = csv::WriterBuilder::new();
 
@@ -102,10 +104,13 @@ impl Index {
     }
 
     /// Get all metadata stored in the index
+    /// The index is stored by identifier and current date to make it easier to
+    /// sync over git and compact old entries in the future.
     fn metadata(&self) -> Result<BTreeSet<Metadata>, Error> {
         let glob_string = self
             .folder_path
             .join(IDENTIFIER_FOLDER_NAME)
+            .join("*")
             .join(format!("*.{}", IDENTIFIER_FILE_EXTENTION));
 
         let glob = glob::glob(&glob_string.to_string_lossy()).map_err(Error::InvalidGlob)?;
@@ -118,6 +123,8 @@ impl Index {
         if index_file_path.exists() {
             index_paths.push(index_file_path);
         }
+
+        trace!("index_paths: {:?}", index_paths);
 
         let metadata = index_paths
             .into_iter()
@@ -148,6 +155,18 @@ impl Index {
         csv_reader
             .deserialize()
             .collect::<Result<Vec<Metadata>, csv::Error>>()
+    }
+
+    /// Get todays file to store the index
+    /// Will live under {identifier_file_path}/{Year}-{Month}-{Day}.csv
+    fn todays_index_path(&self) -> PathBuf {
+        let mut index_path = self
+            .identifier_folder_path
+            .join(chrono::Utc::now().date().to_string());
+
+        index_path.set_extension(IDENTIFIER_FILE_EXTENTION);
+
+        index_path
     }
 }
 
