@@ -20,12 +20,13 @@ lazy_static! {
     static ref DEFAULT_DATADIR_STRING: &'static str = DEFAULT_DATADIR
         .to_str()
         .expect("can not convert xdg data home to string");
-    static ref DEFAULT_IDENTIFIER: std::ffi::OsString =
-        hostname::get().expect("can not get hostname of machine");
-    static ref DEFAULT_IDENTIFIER_STRING: &'static str = DEFAULT_IDENTIFIER
-        .as_os_str()
+    static ref DEFAULT_CONFIG_PATH: PathBuf = xdg::BaseDirectories::with_prefix("todust")
+        .expect("can not read xdg base directories")
+        .place_config_file("config.toml")
+        .expect("can not place config file");
+    static ref DEFAULT_CONFIG_PATH_STRING: &'static str = DEFAULT_CONFIG_PATH
         .to_str()
-        .expect("can not convert hostname to string");
+        .expect("can not convert xdg config file path to string");
 }
 
 /// Very basic todo cli tool that supports multiline todos.
@@ -47,6 +48,17 @@ pub(super) struct Opt {
     )]
     pub(super) log_level: LevelFilter,
 
+    /// Config file to use
+    #[structopt(
+        short = "C",
+        long = "config_path",
+        global = true,
+        value_name = "path",
+        default_value = &DEFAULT_CONFIG_PATH_STRING,
+        env = "TODUST_CONFIG_PATH"
+    )]
+    pub(super) config_path: PathBuf,
+
     /// Subcommand to run
     #[structopt(subcommand)]
     pub(super) cmd: SubCommand,
@@ -63,16 +75,6 @@ pub(super) struct DatadirOpt {
         env = "TODUST_DATADIR"
     )]
     pub(super) datadir: PathBuf,
-
-    /// Identifier for the machine
-    #[structopt(
-        short = "i",
-        long = "identifier",
-        value_name = "identifier",
-        default_value = &DEFAULT_IDENTIFIER_STRING,
-        env = "TODUST_IDENTIFIER"
-    )]
-    pub(super) identifier: String,
 }
 
 #[derive(StructOpt, Debug)]

@@ -1,3 +1,4 @@
+mod config;
 mod entry;
 mod helper;
 mod opt;
@@ -7,6 +8,7 @@ mod templating;
 mod webservice;
 
 use crate::{
+    config::Config,
     entry::{
         Entries,
         Entry,
@@ -79,23 +81,25 @@ fn run() -> Result<(), Error> {
 
     trace!("opt: {:#?}", opt);
 
+    let config = Config::read_path(opt.config_path)?;
+
     match opt.cmd {
-        SubCommand::Add(sub_opt) => run_add(sub_opt),
-        SubCommand::Cleanup(sub_opt) => run_cleanup(sub_opt),
+        SubCommand::Add(sub_opt) => run_add(sub_opt, config),
+        SubCommand::Cleanup(sub_opt) => run_cleanup(sub_opt, config),
         SubCommand::Completion(sub_opt) => run_completion(sub_opt),
-        SubCommand::Done(sub_opt) => run_done(sub_opt),
-        SubCommand::Due(sub_opt) => run_due(sub_opt),
-        SubCommand::Edit(sub_opt) => run_edit(sub_opt),
-        SubCommand::List(sub_opt) => run_list(sub_opt),
-        SubCommand::Move(sub_opt) => run_move(sub_opt),
-        SubCommand::Print(sub_opt) => run_print(sub_opt),
-        SubCommand::Projects(sub_opt) => run_projects(sub_opt),
-        SubCommand::Web(sub_opt) => run_web(sub_opt),
+        SubCommand::Done(sub_opt) => run_done(sub_opt, config),
+        SubCommand::Due(sub_opt) => run_due(sub_opt, config),
+        SubCommand::Edit(sub_opt) => run_edit(sub_opt, config),
+        SubCommand::List(sub_opt) => run_list(sub_opt, config),
+        SubCommand::Move(sub_opt) => run_move(sub_opt, config),
+        SubCommand::Print(sub_opt) => run_print(sub_opt, config),
+        SubCommand::Projects(sub_opt) => run_projects(sub_opt, config),
+        SubCommand::Web(sub_opt) => run_web(sub_opt, config),
     }
 }
 
-fn run_add(opt: AddSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_add(opt: AddSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let text = if let Some(opt_text) = &opt.text {
         opt_text.clone()
@@ -118,8 +122,8 @@ fn run_add(opt: AddSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_cleanup(opt: CleanupSubCommandOpts) -> Result<(), Error> {
-    CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?.run_cleanup()
+fn run_cleanup(opt: CleanupSubCommandOpts, config: Config) -> Result<(), Error> {
+    CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?.run_cleanup()
 }
 
 fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
@@ -129,19 +133,19 @@ fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_done(opt: DoneSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_done(opt: DoneSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
     store.entry_done(opt.entry_id, &opt.project_opt.project)?;
 
     Ok(())
 }
 
-fn run_edit(opt: EditSubCommandOpts) -> Result<(), Error> {
+fn run_edit(opt: EditSubCommandOpts, config: Config) -> Result<(), Error> {
     if opt.entry_id < 1 {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -175,8 +179,8 @@ editor",
     Ok(())
 }
 
-fn run_list(opt: ListSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let entries = store
         .get_active_entries(&opt.project_opt.project)
@@ -205,8 +209,8 @@ fn run_list(opt: ListSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_move(opt: MoveSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_move(opt: MoveSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -226,8 +230,8 @@ fn run_move(opt: MoveSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_print(opt: PrintSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_print(opt: PrintSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let project = opt.project_opt.project;
 
@@ -262,16 +266,16 @@ fn run_print(opt: PrintSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_projects(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
+fn run_projects(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
     if opt.simple {
-        run_projects_simple(opt)
+        run_projects_simple(opt, config)
     } else {
-        run_projects_normal(opt)
+        run_projects_normal(opt, config)
     }
 }
 
-fn run_projects_simple(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_projects_simple(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -293,8 +297,8 @@ fn run_projects_simple(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_projects_normal(opt: ProjectsSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_projects_normal(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -338,8 +342,8 @@ b->total.done_count, b->total.total_count]);
     Ok(())
 }
 
-fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -359,8 +363,8 @@ fn run_due(opt: DueSubCommandOpts) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_web(opt: WebSubCommandOpts) -> Result<(), Error> {
-    let store = CsvStore::open(&opt.datadir_opt.datadir, &opt.datadir_opt.identifier)?;
+fn run_web(opt: WebSubCommandOpts, config: Config) -> Result<(), Error> {
+    let store = CsvStore::open(&opt.datadir_opt.datadir, &config.identifier)?;
 
     crate::webservice::WebService::open(store)?.run(opt.binding)
 }
