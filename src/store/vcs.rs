@@ -10,9 +10,6 @@ use std::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct VcsSettings {
-    autocommit: bool,
-    autopull: bool,
-    autopush: bool,
     #[serde(rename = "type")]
     vcs_type: VcsType,
 }
@@ -20,10 +17,24 @@ pub(super) struct VcsSettings {
 impl Default for VcsSettings {
     fn default() -> Self {
         Self {
+            vcs_type: VcsType::Git,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct VcsConfig {
+    autocommit: bool,
+    autopull: bool,
+    autopush: bool,
+}
+
+impl Default for VcsConfig {
+    fn default() -> Self {
+        Self {
             autocommit: true,
             autopull: false,
             autopush: false,
-            vcs_type: VcsType::Git,
         }
     }
 }
@@ -33,8 +44,9 @@ impl VcsSettings {
         &self,
         repo_path: P,
         message: &str,
+        config: &VcsConfig,
     ) -> Result<(), VcsSettingsError> {
-        if !self.autocommit {
+        if !config.autocommit {
             return Ok(());
         }
 
@@ -47,12 +59,12 @@ impl VcsSettings {
                 debug!("commiting changes to repo");
                 githelper::commit(repo_path.as_ref(), message).map_err(VcsSettingsError::Commit)?;
 
-                if self.autopull {
+                if config.autopull {
                     debug!("pulling changes from origin");
                     githelper::pull(repo_path.as_ref()).map_err(VcsSettingsError::Pull)?;
                 }
 
-                if self.autopush {
+                if config.autopush {
                     debug!("pushing changes to origin");
                     githelper::push(repo_path.as_ref()).map_err(VcsSettingsError::Push)?;
                 }

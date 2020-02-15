@@ -1,5 +1,5 @@
 pub(super) mod index;
-mod vcs;
+pub(super) mod vcs;
 
 use crate::{
     entry::{
@@ -48,15 +48,21 @@ use std::{
     },
 };
 use uuid::Uuid;
+use vcs::VcsConfig;
 
 pub(crate) struct Store {
     datadir: PathBuf,
     index: Index,
     settings: StoreSettings,
+    vcs_config: VcsConfig,
 }
 
 impl Store {
-    pub(crate) fn open<P: AsRef<Path>>(datadir: P, identifier: &str) -> Result<Self, Error> {
+    pub(crate) fn open<P: AsRef<Path>>(
+        datadir: P,
+        identifier: &str,
+        vcs_config: VcsConfig,
+    ) -> Result<Self, Error> {
         std::fs::create_dir_all(&datadir)?;
 
         let settings = Store::get_settings(&datadir)?;
@@ -69,6 +75,7 @@ impl Store {
             datadir: datadir.as_ref().to_path_buf(),
             index: Index::new(Store::index_folder(&datadir), identifier)?,
             settings,
+            vcs_config,
         })
     }
 
@@ -209,7 +216,7 @@ impl Store {
 
         if let Some(vcs) = &self.settings.vcs {
             let message = format!("added entry with id {}", entry.metadata.uuid);
-            vcs.commit(&self.datadir, &message)?;
+            vcs.commit(&self.datadir, &message, &self.vcs_config)?;
         }
 
         Ok(())
@@ -242,7 +249,7 @@ impl Store {
 
         if let Some(vcs) = &self.settings.vcs {
             let message = format!("marked entry with id {} as done", entry.metadata.uuid);
-            vcs.commit(&self.datadir, &message)?;
+            vcs.commit(&self.datadir, &message, &self.vcs_config)?;
         }
 
         Ok(())
@@ -265,7 +272,7 @@ impl Store {
 
         if let Some(vcs) = &self.settings.vcs {
             let message = format!("marked entry with id {} as done", entry.metadata.uuid);
-            vcs.commit(&self.datadir, &message)?;
+            vcs.commit(&self.datadir, &message, &self.vcs_config)?;
         }
 
         Ok(())
@@ -288,7 +295,7 @@ impl Store {
 
         if let Some(vcs) = &self.settings.vcs {
             let message = format!("marked entry with id {} as done", entry.metadata.uuid);
-            vcs.commit(&self.datadir, &message)?;
+            vcs.commit(&self.datadir, &message, &self.vcs_config)?;
         }
 
         Ok(())
@@ -404,7 +411,7 @@ impl Store {
         self.cleanup_unreferenced_entry()?;
 
         if let Some(vcs) = &self.settings.vcs {
-            vcs.commit(&self.datadir, "ran cleanup")?;
+            vcs.commit(&self.datadir, "ran cleanup", &self.vcs_config)?;
         }
 
         Ok(())
@@ -422,7 +429,7 @@ impl Store {
 
         if let Some(vcs) = &self.settings.vcs {
             let message = format!("updated entry with id {}", entry.metadata.uuid);
-            vcs.commit(&self.datadir, &message)?;
+            vcs.commit(&self.datadir, &message, &self.vcs_config)?;
         }
 
         Ok(())

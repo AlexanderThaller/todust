@@ -97,7 +97,11 @@ fn run() -> Result<(), Error> {
 }
 
 fn run_add(opt: AddSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let text = if let Some(opt_text) = &opt.text {
         opt_text.clone()
@@ -121,7 +125,12 @@ fn run_add(opt: AddSubCommandOpts, config: Config) -> Result<(), Error> {
 }
 
 fn run_cleanup(opt: CleanupSubCommandOpts, config: Config) -> Result<(), Error> {
-    Store::open(&opt.datadir_opt.datadir, &config.identifier)?.run_cleanup()
+    Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?
+    .run_cleanup()
 }
 
 fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
@@ -132,7 +141,11 @@ fn run_completion(opt: CompletionSubCommandOpts) -> Result<(), Error> {
 }
 
 fn run_done(opt: DoneSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
     store.entry_done(opt.entry_id, &opt.project_opt.project)?;
 
     Ok(())
@@ -143,7 +156,11 @@ fn run_edit(opt: EditSubCommandOpts, config: Config) -> Result<(), Error> {
         bail!("entry id can not be smaller than 1")
     }
 
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -178,7 +195,11 @@ editor",
 }
 
 fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let entries = store
         .get_active_entries(&opt.project_opt.project)
@@ -208,7 +229,11 @@ fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
 }
 
 fn run_move(opt: MoveSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -229,7 +254,11 @@ fn run_move(opt: MoveSubCommandOpts, config: Config) -> Result<(), Error> {
 }
 
 fn run_print(opt: PrintSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let project = opt.project_opt.project;
 
@@ -273,7 +302,11 @@ fn run_projects(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error
 }
 
 fn run_projects_simple(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -296,7 +329,11 @@ fn run_projects_simple(opt: ProjectsSubCommandOpts, config: Config) -> Result<()
 }
 
 fn run_projects_normal(opt: ProjectsSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let mut projects_count = store
         .get_projects_count()
@@ -341,7 +378,11 @@ b->total.done_count, b->total.total_count]);
 }
 
 fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     let old_entry = store
         .get_entry_by_id(opt.entry_id, &opt.project_opt.project)
@@ -362,7 +403,11 @@ fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
 }
 
 fn run_web(opt: WebSubCommandOpts, config: Config) -> Result<(), Error> {
-    let store = Store::open(&opt.datadir_opt.datadir, &config.identifier)?;
+    let store = Store::open(
+        &opt.datadir_opt.datadir,
+        &config.identifier,
+        config.vcs_config,
+    )?;
 
     crate::webservice::WebService::open(store)?.run(opt.binding)
 }

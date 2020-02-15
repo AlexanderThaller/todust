@@ -1,3 +1,4 @@
+use crate::store::vcs::VcsConfig;
 use serde::{
     Deserialize,
     Serialize,
@@ -15,12 +16,14 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize)]
 pub(super) struct Config {
     pub(super) identifier: String,
+    pub(super) vcs_config: VcsConfig,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             identifier: Uuid::new_v4().to_string(),
+            vcs_config: VcsConfig::default(),
         }
     }
 }
