@@ -400,9 +400,11 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
 
     let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
 
+            let text = message.text.replace("\r", "");
+
     let new_entry = if message.update_time.is_some() {
         Entry {
-            text: message.text,
+            text,
             metadata: Metadata {
                 started: Utc::now(),
                 last_change: Utc::now(),
@@ -411,7 +413,7 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
         }
     } else {
         Entry {
-            text: message.text,
+            text,
             ..old_entry
         }
     };
