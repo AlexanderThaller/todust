@@ -21,7 +21,6 @@ use failure::{
     Error,
     ResultExt,
 };
-use fs2::FileExt;
 use glob::glob;
 use log::{
     debug,
@@ -38,10 +37,7 @@ use std::{
         HashMap,
     },
     fs,
-    io::{
-        Read,
-        Write,
-    },
+    io::Write,
     path::{
         Path,
         PathBuf,
@@ -95,17 +91,12 @@ impl Store {
             let data = toml::to_string_pretty(&info)?;
 
             let mut file = fs::File::create(path)?;
-            file.lock_exclusive()?;
             file.write_all(data.as_bytes())?;
 
             return Ok(info);
         }
 
-        let mut file = fs::File::open(path)?;
-        file.lock_exclusive()?;
-
-        let mut data = Vec::new();
-        file.read_to_end(&mut data)?;
+        let data = fs::read(path)?;
         let info = toml::from_slice(&data)?;
 
         Ok(info)
@@ -156,7 +147,6 @@ impl Store {
         let entry_file = self.get_entry_filename(&entry.metadata);
 
         let mut file = fs::File::create(entry_file).context("can not create entry file")?;
-        file.lock_exclusive()?;
         file.write(entry.text.as_bytes())
             .context("can not write entry text to file")?;
 
@@ -165,13 +155,7 @@ impl Store {
 
     fn get_entry_for_metadata(&self, metadata: Metadata) -> Result<Entry, Error> {
         let entry_file = self.get_entry_filename(&metadata);
-
-        let mut file = fs::File::open(entry_file).context("can not open entry file")?;
-        file.lock_exclusive()?;
-
-        let mut text = String::new();
-        file.read_to_string(&mut text)
-            .context("can not read entry file text")?;
+        let text = fs::read_to_string(entry_file).context("can not read entry file text")?;
 
         Ok(Entry { metadata, text })
     }

@@ -400,7 +400,7 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
 
     let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
 
-            let text = message.text.replace("\r", "");
+    let text = message.text.replace("\r", "");
 
     let new_entry = if message.update_time.is_some() {
         Entry {
@@ -412,10 +412,7 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
             },
         }
     } else {
-        Entry {
-            text,
-            ..old_entry
-        }
+        Entry { text, ..old_entry }
     };
 
     context.state().store.update_entry(new_entry).unwrap();

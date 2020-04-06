@@ -30,10 +30,7 @@ pub(super) fn confirm(message: &str, default: bool) -> Result<bool, Error> {
 pub(super) fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Error> {
     use std::{
         env,
-        io::{
-            Read,
-            Write,
-        },
+        io::Write,
         process::Command,
     };
 
@@ -68,11 +65,7 @@ pub(super) fn string_from_editor(prepoluate: Option<&str>) -> Result<String, Err
         .wait()
         .context("problem while running editor")?;
 
-    let mut string = String::new();
-    let mut file = File::open(tmppath).context("can not open tmppath for reading")?;
-
-    file.read_to_string(&mut string)
-        .context("can not read tmpfile to string")?;
+    let string = std::fs::read_to_string(tmppath).context("can not read tmpfile to string")?;
 
     Ok(string)
 }
