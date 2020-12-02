@@ -131,9 +131,6 @@ pub(super) fn some_or_dash(value: &Value, _: &HashMap<String, Value>) -> TeraRes
 pub(super) fn some(value: Option<&Value>, _params: &[Value]) -> TeraResult<bool> {
     Ok(match value {
         None => false,
-        Some(value) => match value {
-            Value::Null => false,
-            _ => true,
-        },
+        Some(value) => matches!(value, Value::Null),
     })
 }
