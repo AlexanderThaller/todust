@@ -170,23 +170,21 @@ impl Store {
             .map(|metadata| metadata.uuid)
             .collect::<BTreeSet<_>>();
 
-        for entry in glob(&glob_text).context("failed to read glob pattern")? {
-            if let Ok(path) = entry {
-                let uuid = path
-                    .file_stem()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .parse::<Uuid>()
-                    .context("can not parse uuid from file name")?;
+        for path in (glob(&glob_text).context("failed to read glob pattern")?).flatten() {
+            let uuid = path
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .parse::<Uuid>()
+                .context("can not parse uuid from file name")?;
 
-                if !store_uuids.contains(&uuid) {
-                    info!("remove unreferenced entry: {:?}", path);
-                    fs::remove_file(path)?;
-                }
-
-                trace!("uuid from file entry: {:?}", uuid);
+            if !store_uuids.contains(&uuid) {
+                info!("remove unreferenced entry: {:?}", path);
+                fs::remove_file(path)?;
             }
+
+            trace!("uuid from file entry: {:?}", uuid);
         }
 
         Ok(())
