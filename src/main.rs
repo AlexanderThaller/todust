@@ -23,6 +23,11 @@ use crate::{
     store::Store,
 };
 use chrono::Utc;
+use comfy_table::{
+    Attribute,
+    Cell,
+    Table,
+};
 use failure::{
     bail,
     Error,
@@ -31,12 +36,6 @@ use failure::{
 use log::{
     error,
     trace,
-};
-use prettytable::{
-    cell,
-    format,
-    row,
-    Table,
 };
 use std::io::{
     self,
@@ -211,19 +210,25 @@ fn run_list(opt: ListSubCommandOpts, config: Config) -> Result<(), Error> {
     }
 
     let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row![b->"ID", b->"Age", b->"Due", b->"Description"]);
+    table.load_preset("                   ");
+    table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+    table.set_header(vec![
+        Cell::new("ID").add_attribute(Attribute::Bold),
+        Cell::new("Age").add_attribute(Attribute::Bold),
+        Cell::new("Due").add_attribute(Attribute::Bold),
+        Cell::new("Description").add_attribute(Attribute::Bold),
+    ]);
 
     for (index, entry) in entries.into_iter().enumerate() {
-        table.add_row(row![
-            index + 1,
+        table.add_row(vec![
+            format!("{}", index + 1),
             format_duration(entry.age()),
             format_timestamp(entry.metadata.due),
             format!("{}", entry),
         ]);
     }
 
-    table.printstd();
+    println!("{}", table);
 
     Ok(())
 }
@@ -345,22 +350,28 @@ fn run_projects_normal(opt: ProjectsSubCommandOpts, config: Config) -> Result<()
     projects_count.sort();
 
     let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(row![b->"Project", b->"Active", b->"Done", b->"Total"]);
+    table.load_preset("                   ");
+    table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+    table.set_header(vec![
+        Cell::new("Project").add_attribute(Attribute::Bold),
+        Cell::new("Active").add_attribute(Attribute::Bold),
+        Cell::new("Done").add_attribute(Attribute::Bold),
+        Cell::new("Total").add_attribute(Attribute::Bold),
+    ]);
 
     for entry in &projects_count {
         trace!("entry written to table: {:#?}", entry);
 
-        table.add_row(row![
-            entry.project,
-            entry.active_count,
-            entry.done_count,
-            entry.total_count
+        table.add_row(vec![
+            entry.project.to_string(),
+            entry.active_count.to_string(),
+            entry.done_count.to_string(),
+            entry.total_count.to_string(),
         ]);
     }
 
     if !projects_count.is_empty() {
-        table.add_row(row!["", "------", "----", "-----"]);
+        table.add_row(vec!["", "------", "----", "-----"]);
     }
 
     let total = store
@@ -369,10 +380,14 @@ fn run_projects_normal(opt: ProjectsSubCommandOpts, config: Config) -> Result<()
         .into_iter()
         .fold(ProjectCount::default(), |acc, x| acc + x);
 
-    table.add_row(row![b->"Total", b->total.active_count,
-b->total.done_count, b->total.total_count]);
+    table.add_row(vec![
+        "Total".to_string(),
+        total.active_count.to_string(),
+        total.done_count.to_string(),
+        total.total_count.to_string(),
+    ]);
 
-    table.printstd();
+    println!("{}", table);
 
     Ok(())
 }
