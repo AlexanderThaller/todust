@@ -8,19 +8,8 @@ use crate::{
 };
 use chrono::Utc;
 use failure::Error;
-use http::{
-    response::Response,
-    StatusCode,
-};
 use serde::Deserialize;
 use tera::Tera;
-use tide::{
-    error::ResultExt,
-    forms::ExtractForms,
-    response,
-    Context,
-    EndpointResult,
-};
 use uuid::Uuid;
 
 pub(super) struct WebService {

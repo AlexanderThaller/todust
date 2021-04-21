@@ -43,12 +43,10 @@ use std::io::{
 };
 use structopt::StructOpt;
 
-fn main() {
-    if let Err(err) = run() {
-        error!("{}", format_err(&err));
-        trace!("backtrace:\n{}", err.backtrace());
-
-        ::std::process::exit(1);
+#[async_std::main]
+async fn main() {
+    if let Err(err) = run().await {
+        error!("{}", err)
     }
 }
 
@@ -63,7 +61,7 @@ fn format_err(err: &Error) -> String {
     causes.to_owned()
 }
 
-fn run() -> Result<(), Error> {
+async fn run() -> Result<(), Error> {
     let opt = Opt::from_args();
 
     // setup logging
