@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub(super) struct VcsSettings {
     #[serde(rename = "type")]
     vcs_type: VcsType,
@@ -22,7 +22,7 @@ impl Default for VcsSettings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct VcsConfig {
     autocommit: bool,
     autopull: bool,
@@ -109,7 +109,7 @@ impl std::error::Error for VcsSettingsError {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub(super) enum VcsType {
     Git,
 }

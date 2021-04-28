@@ -8,10 +8,18 @@ use crate::{
 };
 use chrono::Utc;
 use failure::Error;
+use http_types::mime;
 use serde::Deserialize;
 use tera::Tera;
+use tide::{
+    Body,
+    Request,
+    Response,
+    StatusCode,
+};
 use uuid::Uuid;
 
+#[derive(Debug, Clone)]
 pub(super) struct WebService {
     store: Store,
     templates: Tera,
@@ -65,10 +73,8 @@ impl WebService {
         Ok(templates)
     }
 
-    pub(super) fn run(self, binding: std::net::SocketAddr) -> Result<(), Error> {
-        let mut app = tide::App::with_state(self);
-
-        app.middleware(tide::middleware::RootLogger::new());
+    pub(super) async fn run(self, binding: std::net::SocketAddr) -> Result<(), Error> {
+        let mut app = tide::with_state(self);
 
         app.at("/").get(handler_index);
         app.at("/_/health").get(handler_health);
@@ -103,12 +109,14 @@ impl WebService {
 
         app.at("/favicon.ico").get(handler_favicon_ico);
 
-        Ok(app.serve(binding)?)
+        app.listen(binding).await?;
+
+        Ok(())
     }
 }
 
-async fn handler_index(context: Context<WebService>) -> EndpointResult {
-    let mut projects_count = context
+async fn handler_index(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let mut projects_count = request
         .state()
         .store
         .get_projects_count()
@@ -121,31 +129,30 @@ async fn handler_index(context: Context<WebService>) -> EndpointResult {
     let mut template_context = tera::Context::new();
     template_context.insert("projects_count", &projects_count);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("index.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output))
+        .build())
 }
 
-async fn handler_health(_context: Context<WebService>) -> EndpointResult {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+async fn handler_health(_request: Request<WebService>) -> Result<Response, tide::Error> {
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/plain")
-        .body("".into())
-        .unwrap())
+        .body(Body::from(""))
+        .build())
 }
 
-async fn handler_project(context: Context<WebService>) -> EndpointResult {
-    let project: String = context.param("project").client_err()?;
+async fn handler_project(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let project = request.param("project")?;
 
-    let show_done = match context.uri().query() {
+    // TODO: use request.query() instead
+    let show_done = match request.url().query() {
         Some(parameters) => parameters
             .split('&')
             .map(|key_values| {
@@ -158,9 +165,9 @@ async fn handler_project(context: Context<WebService>) -> EndpointResult {
         None => false,
     };
 
-    let entries_active = context.state().store.get_active_entries(&project).unwrap();
+    let entries_active = request.state().store.get_active_entries(&project).unwrap();
     let entries_done = if show_done {
-        context.state().store.get_done_entries(&project).unwrap()
+        request.state().store.get_done_entries(&project).unwrap()
     } else {
         crate::entry::Entries::default()
     };
@@ -171,115 +178,105 @@ async fn handler_project(context: Context<WebService>) -> EndpointResult {
     template_context.insert("project", &project);
     template_context.insert("show_done", &show_done);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("project.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output))
+        .build())
 }
 
-async fn handler_project_add_entry(context: Context<WebService>) -> EndpointResult {
-    let project: String = context
-        .param("project")
-        .client_err()
-        .unwrap_or_else(|_| "work".to_string());
+async fn handler_project_add_entry(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let project = request.param("project").unwrap_or("work");
 
     let mut template_context = tera::Context::new();
     template_context.insert("project", &project);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("project_add_entry.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output.as_bytes()))
+        .build())
 }
 
-async fn handler_entry(context: Context<WebService>) -> EndpointResult {
-    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
-        Ok(uuid) => uuid,
+async fn handler_entry(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let uuid: uuid::Uuid = match request.param("uuid") {
+        Ok(uuid) => uuid.parse()?,
         Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+            return Ok(Response::builder(StatusCode::InternalServerError)
                 .header("Content-Type", "text/plain")
-                .body("500 - no uuid found".into())
-                .unwrap())
+                .body(Body::from("500 - no uuid found"))
+                .build())
         }
     };
 
-    let entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let entry = request.state().store.get_entry_by_uuid(&uuid).unwrap();
 
     let mut template_context = tera::Context::new();
     template_context.insert("entry", &entry);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("entry.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output.as_bytes()))
+        .build())
 }
 
-async fn handler_entry_edit(context: Context<WebService>) -> EndpointResult {
-    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
-        Ok(uuid) => uuid,
+async fn handler_entry_edit(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let uuid: uuid::Uuid = match request.param("uuid") {
+        Ok(uuid) => uuid.parse()?,
         Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+            return Ok(Response::builder(StatusCode::InternalServerError)
                 .header("Content-Type", "text/plain")
-                .body("500 - no uuid found".into())
-                .unwrap())
+                .body(Body::from("500 - no uuid found"))
+                .build())
         }
     };
 
-    let entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let entry = request.state().store.get_entry_by_uuid(&uuid).unwrap();
 
     let mut template_context = tera::Context::new();
     template_context.insert("entry", &entry);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("entry_edit.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output.as_bytes()))
+        .build())
 }
 
-async fn handler_entry_move_project(context: Context<WebService>) -> EndpointResult {
-    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
-        Ok(uuid) => uuid,
+async fn handler_entry_move_project(request: Request<WebService>) -> Result<Response, tide::Error> {
+    let uuid: uuid::Uuid = match request.param("uuid") {
+        Ok(uuid) => uuid.parse()?,
         Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+            return Ok(Response::builder(StatusCode::InternalServerError)
                 .header("Content-Type", "text/plain")
-                .body("500 - no uuid found".into())
-                .unwrap())
+                .body(Body::from("500 - no uuid found"))
+                .build())
         }
     };
 
-    let entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
-    let mut projects = context.state().store.get_projects().unwrap();
+    let entry = request.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let mut projects = request.state().store.get_projects().unwrap();
     projects.sort();
     projects.dedup();
 
@@ -287,65 +284,75 @@ async fn handler_entry_move_project(context: Context<WebService>) -> EndpointRes
     template_context.insert("entry", &entry);
     template_context.insert("projects", &projects);
 
-    let output = context
+    let output = request
         .state()
         .templates
         .render("entry_move_project.html", &template_context)
         .unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/html")
-        .body(output.as_bytes().into())
-        .unwrap())
+        .body(Body::from(output.as_bytes()))
+        .build())
 }
 
-async fn handler_api_v1_project_entries(context: Context<WebService>) -> EndpointResult {
-    let project: String = context.param("project").client_err()?;
+async fn handler_api_v1_project_entries(
+    request: Request<WebService>,
+) -> Result<Response, tide::Error> {
+    let project = request.param("project")?;
 
-    let entries = context.state().store.get_active_entries(&project).unwrap();
+    let entries = request.state().store.get_active_entries(&project).unwrap();
 
-    Ok(response::json(entries))
+    let response = Response::builder(200)
+        .body(Body::from_json(&entries)?)
+        .content_type(mime::JSON)
+        .build();
+
+    Ok(response)
 }
 
-async fn handler_api_v1_mark_entry_done(context: Context<WebService>) -> EndpointResult {
-    let uuid: Uuid = context.param("uuid").client_err()?;
+async fn handler_api_v1_mark_entry_done(
+    request: Request<WebService>,
+) -> Result<Response, tide::Error> {
+    let uuid: Uuid = request.param("uuid")?.parse()?;
 
-    context.state().store.entry_done_by_uuid(uuid).unwrap();
+    request.state().store.entry_done_by_uuid(uuid).unwrap();
 
     let location = format!("/entry/{}", uuid);
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
+    Ok(Response::builder(StatusCode::SeeOther)
         .header("Content-Type", "text/plain")
         .header("Location", location)
-        .body("entry updated to be done".into())
-        .unwrap())
+        .body(Body::from("entry updated to be done"))
+        .build())
 }
 
-async fn handler_api_v1_mark_entry_active(context: Context<WebService>) -> EndpointResult {
-    let uuid: Uuid = context.param("uuid").client_err()?;
+async fn handler_api_v1_mark_entry_active(
+    request: Request<WebService>,
+) -> Result<Response, tide::Error> {
+    let uuid: Uuid = request.param("uuid")?.parse()?;
 
-    context.state().store.entry_active_by_uuid(uuid).unwrap();
+    request.state().store.entry_active_by_uuid(uuid).unwrap();
 
     let location = format!("/entry/{}", uuid);
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
+    Ok(Response::builder(StatusCode::SeeOther)
         .header("Content-Type", "text/plain")
         .header("Location", location)
-        .body("entry updated to be active".into())
-        .unwrap())
+        .body(Body::from("entry updated to be active"))
+        .build())
 }
 
-async fn handler_api_v1_project_add_entry(mut context: Context<WebService>) -> EndpointResult {
+async fn handler_api_v1_project_add_entry(
+    mut request: Request<WebService>,
+) -> Result<Response, tide::Error> {
     #[derive(Deserialize, Debug)]
     struct Message {
         text: String,
     }
 
-    let project: String = context.param("project").client_err()?;
-    let message: Message = context.body_form().await?;
+    let project = request.param("project")?.to_owned();
+    let message: Message = request.body_form().await?;
 
     let entry = Entry {
         text: message.text.replace("\r", ""),
@@ -357,37 +364,37 @@ async fn handler_api_v1_project_add_entry(mut context: Context<WebService>) -> E
 
     let uuid = entry.metadata.uuid;
 
-    context.state().store.add_entry(entry).unwrap();
+    request.state().store.add_entry(entry).unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
+    Ok(Response::builder(StatusCode::SeeOther)
         .header("Content-Type", "text/plain")
         .header("Location", format!("/entry/{}", uuid))
-        .body("entry updated to be done".into())
-        .unwrap())
+        .body(Body::from("entry updated to be done"))
+        .build())
 }
 
-async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> EndpointResult {
+async fn handler_api_v1_entry_edit(
+    mut request: Request<WebService>,
+) -> Result<Response, tide::Error> {
     #[derive(Deserialize, Debug)]
     struct Message {
         text: String,
         update_time: Option<String>,
     }
 
-    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
-        Ok(uuid) => uuid,
+    let uuid: uuid::Uuid = match request.param("uuid") {
+        Ok(uuid) => uuid.parse()?,
         Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+            return Ok(Response::builder(StatusCode::InternalServerError)
                 .header("Content-Type", "text/plain")
-                .body("500 - no uuid found".into())
-                .unwrap())
+                .body(Body::from("500 - no uuid found"))
+                .build())
         }
     };
 
-    let message: Message = context.body_form().await?;
+    let message: Message = request.body_form().await?;
 
-    let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let old_entry = request.state().store.get_entry_by_uuid(&uuid).unwrap();
 
     let text = message.text.replace("\r", "");
 
@@ -404,36 +411,36 @@ async fn handler_api_v1_entry_edit(mut context: Context<WebService>) -> Endpoint
         Entry { text, ..old_entry }
     };
 
-    context.state().store.update_entry(new_entry).unwrap();
+    request.state().store.update_entry(new_entry).unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
+    Ok(Response::builder(StatusCode::SeeOther)
         .header("Content-Type", "text/plain")
         .header("Location", format!("/entry/{}", uuid))
-        .body("entry text updated".into())
-        .unwrap())
+        .body(Body::from("entry text updated"))
+        .build())
 }
 
-async fn handler_api_v1_entry_move_project(mut context: Context<WebService>) -> EndpointResult {
+async fn handler_api_v1_entry_move_project(
+    mut request: Request<WebService>,
+) -> Result<Response, tide::Error> {
     #[derive(Deserialize, Debug)]
     struct Message {
         new_project: String,
     }
 
-    let message: Message = context.body_form().await?;
+    let message: Message = request.body_form().await?;
 
-    let uuid: uuid::Uuid = match context.param("uuid").client_err() {
-        Ok(uuid) => uuid,
+    let uuid: uuid::Uuid = match request.param("uuid") {
+        Ok(uuid) => uuid.parse()?,
         Err(_) => {
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
+            return Ok(Response::builder(StatusCode::InternalServerError)
                 .header("Content-Type", "text/plain")
-                .body("500 - no uuid found".into())
-                .unwrap())
+                .body(Body::from("500 - no uuid found"))
+                .build())
         }
     };
 
-    let old_entry = context.state().store.get_entry_by_uuid(&uuid).unwrap();
+    let old_entry = request.state().store.get_entry_by_uuid(&uuid).unwrap();
 
     let new_entry = Entry {
         metadata: Metadata {
@@ -444,54 +451,51 @@ async fn handler_api_v1_entry_move_project(mut context: Context<WebService>) -> 
         ..old_entry
     };
 
-    context.state().store.update_entry(new_entry).unwrap();
+    request.state().store.update_entry(new_entry).unwrap();
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
+    Ok(Response::builder(StatusCode::SeeOther)
         .header("Content-Type", "text/plain")
         .header("Location", format!("/entry/{}", uuid))
-        .body("entry text updated".into())
-        .unwrap())
+        .body(Body::from("entry text updated"))
+        .build())
 }
 
-async fn handler_static_css_main(_context: Context<WebService>) -> EndpointResult {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+async fn handler_static_css_main(_request: Request<WebService>) -> Result<Response, tide::Error> {
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/css")
-        .body(include_bytes!("resources/css/main.css").to_vec().into())
-        .unwrap())
+        .body(Body::from(
+            include_bytes!("resources/css/main.css").to_vec(),
+        ))
+        .build())
 }
 
-async fn handler_static_css_font_awesome(_context: Context<WebService>) -> EndpointResult {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+async fn handler_static_css_font_awesome(
+    _request: Request<WebService>,
+) -> Result<Response, tide::Error> {
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "text/css")
-        .body(
-            include_bytes!("resources/css/font-awesome.min.css")
-                .to_vec()
-                .into(),
-        )
-        .unwrap())
+        .body(Body::from(
+            include_bytes!("resources/css/font-awesome.min.css").to_vec(),
+        ))
+        .build())
 }
 
 async fn handler_static_fonts_fontawesome_webfont_woff2(
-    _context: Context<WebService>,
-) -> EndpointResult {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+    _request: Request<WebService>,
+) -> Result<Response, tide::Error> {
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "font/woff2")
-        .body(
-            include_bytes!("resources/fonts/fontawesome-webfont.woff2")
-                .to_vec()
-                .into(),
-        )
-        .unwrap())
+        .body(Body::from(
+            include_bytes!("resources/fonts/fontawesome-webfont.woff2").to_vec(),
+        ))
+        .build())
 }
 
-async fn handler_favicon_ico(_context: Context<WebService>) -> EndpointResult {
-    Ok(Response::builder()
-        .status(StatusCode::OK)
+async fn handler_favicon_ico(_request: Request<WebService>) -> Result<Response, tide::Error> {
+    Ok(Response::builder(StatusCode::Ok)
         .header("Content-Type", "image/x-icon")
-        .body(include_bytes!("resources/img/favicon.ico").to_vec().into())
-        .unwrap())
+        .body(Body::from(
+            include_bytes!("resources/img/favicon.ico").to_vec(),
+        ))
+        .build())
 }

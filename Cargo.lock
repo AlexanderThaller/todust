@@ -2238,6 +2238,7 @@ dependencies = [
  "failure",
  "githelper",
  "glob",
+ "http-types",
  "lazy_static",
  "log 0.4.14",
  "serde",
