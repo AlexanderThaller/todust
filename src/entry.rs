@@ -1,14 +1,14 @@
 use crate::templating;
+use anyhow::{
+    bail,
+    Error,
+};
 use chrono::{
     DateTime,
     NaiveDate,
     Utc,
 };
 use core::ops::AddAssign;
-use failure::{
-    bail,
-    Error,
-};
 use serde::{
     Deserialize,
     Serialize,

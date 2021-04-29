@@ -6,8 +6,8 @@ use crate::{
     store::Store,
     templating,
 };
+use anyhow::Error;
 use chrono::Utc;
-use failure::Error;
 use http_types::mime;
 use serde::Deserialize;
 use tera::Tera;

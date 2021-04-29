@@ -14,13 +14,13 @@ use crate::{
         vcs::VcsSettings,
     },
 };
-use chrono::Utc;
-use failure::{
+use anyhow::{
     bail,
     format_err,
+    Context,
     Error,
-    ResultExt,
 };
+use chrono::Utc;
 use glob::glob;
 use log::{
     debug,

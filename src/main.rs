@@ -22,16 +22,16 @@ use crate::{
     opt::*,
     store::Store,
 };
+use anyhow::{
+    bail,
+    Context,
+    Error,
+};
 use chrono::Utc;
 use comfy_table::{
     Attribute,
     Cell,
     Table,
-};
-use failure::{
-    bail,
-    Error,
-    ResultExt,
 };
 use log::{
     error,
