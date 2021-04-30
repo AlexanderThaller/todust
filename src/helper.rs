@@ -1,11 +1,11 @@
+use anyhow::{
+    bail,
+    Context,
+    Error,
+};
 use chrono::{
     Duration,
     NaiveDate,
-};
-use failure::{
-    bail,
-    Error,
-    ResultExt,
 };
 use std::fs::File;
 use tempfile::tempdir;

@@ -22,16 +22,16 @@ use crate::{
     opt::*,
     store::Store,
 };
+use anyhow::{
+    bail,
+    Context,
+    Error,
+};
 use chrono::Utc;
 use comfy_table::{
     Attribute,
     Cell,
     Table,
-};
-use failure::{
-    bail,
-    Error,
-    ResultExt,
 };
 use log::{
     error,
@@ -43,31 +43,31 @@ use std::io::{
 };
 use structopt::StructOpt;
 
-fn main() {
-    if let Err(err) = run() {
-        error!("{}", format_err(&err));
-        trace!("backtrace:\n{}", err.backtrace());
-
-        ::std::process::exit(1);
+#[async_std::main]
+async fn main() {
+    if let Err(err) = run().await {
+        error!("{}", err)
     }
 }
 
-fn format_err(err: &Error) -> String {
-    let mut causes = String::new();
-    for c in err.iter_chain() {
-        causes += &format!("{}: ", c);
-    }
-
-    let causes = causes.trim().trim_matches(':');
-
-    causes.to_owned()
-}
-
-fn run() -> Result<(), Error> {
+async fn run() -> Result<(), Error> {
     let opt = Opt::from_args();
 
     // setup logging
-    {
+    if matches!(opt.cmd, SubCommand::Web(_)) {
+        use tide::log::LevelFilter;
+
+        let tide_log_level = match opt.log_level {
+            simplelog::LevelFilter::Trace => LevelFilter::Trace,
+            simplelog::LevelFilter::Debug => LevelFilter::Debug,
+            simplelog::LevelFilter::Info => LevelFilter::Info,
+            simplelog::LevelFilter::Warn => LevelFilter::Warn,
+            simplelog::LevelFilter::Error => LevelFilter::Error,
+            simplelog::LevelFilter::Off => LevelFilter::Off,
+        };
+
+        tide::log::with_level(tide_log_level);
+    } else {
         let config = simplelog::ConfigBuilder::new().build();
 
         if let Err(err) = { simplelog::SimpleLogger::init(opt.log_level, config) } {
@@ -91,7 +91,7 @@ fn run() -> Result<(), Error> {
         SubCommand::Move(sub_opt) => run_move(sub_opt, config),
         SubCommand::Print(sub_opt) => run_print(sub_opt, config),
         SubCommand::Projects(sub_opt) => run_projects(sub_opt, config),
-        SubCommand::Web(sub_opt) => run_web(sub_opt, config),
+        SubCommand::Web(sub_opt) => run_web(sub_opt, config).await,
     }
 }
 
@@ -417,12 +417,16 @@ fn run_due(opt: DueSubCommandOpts, config: Config) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_web(opt: WebSubCommandOpts, config: Config) -> Result<(), Error> {
+async fn run_web(opt: WebSubCommandOpts, config: Config) -> Result<(), Error> {
     let store = Store::open(
         &opt.datadir_opt.datadir,
         config.identifier,
         config.vcs_config,
     )?;
 
-    crate::webservice::WebService::open(store)?.run(opt.binding)
+    crate::webservice::WebService::open(store)?
+        .run(opt.binding)
+        .await?;
+
+    Ok(())
 }

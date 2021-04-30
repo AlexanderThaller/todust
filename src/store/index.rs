@@ -12,6 +12,7 @@ use std::{
     },
 };
 
+#[derive(Debug, Clone)]
 pub(crate) struct Index {
     folder_path: PathBuf,
     identifier: String,

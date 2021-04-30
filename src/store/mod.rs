@@ -14,13 +14,13 @@ use crate::{
         vcs::VcsSettings,
     },
 };
-use chrono::Utc;
-use failure::{
+use anyhow::{
     bail,
     format_err,
+    Context,
     Error,
-    ResultExt,
 };
+use chrono::Utc;
 use glob::glob;
 use log::{
     debug,
@@ -46,6 +46,7 @@ use std::{
 use uuid::Uuid;
 use vcs::VcsConfig;
 
+#[derive(Debug, Clone)]
 pub(crate) struct Store {
     datadir: PathBuf,
     index: Index,
@@ -418,7 +419,7 @@ impl Store {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct StoreSettings {
     store_version: usize,
     vcs: Option<VcsSettings>,

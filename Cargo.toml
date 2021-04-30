@@ -6,23 +6,24 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+anyhow = "1"
+async-std = { version = "1", features = [ "attributes" ] }
 chrono = { version = "0.4", features = ["serde"] }
 comfy-table = "2"
 csv = "1"
-failure = "0.1"
 githelper = "0.3"
 glob = "0.3"
-http = "0.1"
+http-types = "2"
 lazy_static = "1"
 log = "0.4"
-serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
+serde = { version = "1", features = [ "derive" ] }
 simplelog = "0.10"
 structopt = "0.3"
 tempfile = "3"
 tera = "1"
 text_io = "0.1"
-tide = "0.3"
+tide = "0.16"
 time = "0.2"
 toml = "0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
