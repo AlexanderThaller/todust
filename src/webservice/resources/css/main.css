@@ -49,19 +49,19 @@ body {
 	font-family: sans-serif;
 	font-size: 19px;
 	line-height: 24px;
-	background: #ebeced;
+	background: #232627;
 	line-height: 1.5;
 	margin-top: 1.5em;
 	margin-bottom: 1.5em;
-	color: #37454d;
+	color: rgb(190, 185, 176);
 }
 a:hover {
-	border-bottom: 1px solid #697379;
+	border-bottom: 1px solid rgb(190, 185, 176);
 }
 a {
-	color: #37454d;
+	color: rgb(190, 185, 176);
 	text-decoration: none;
-	border-bottom: 1px solid #cdd0d2;
+	border-bottom: 1px solid rgb(99, 99, 99);
 }
 pre,xmp,plaintext,listing {
 	font-size: 16px;
