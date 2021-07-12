@@ -165,9 +165,9 @@ async fn handler_project(request: Request<WebService>) -> Result<Response, tide:
         None => false,
     };
 
-    let entries_active = request.state().store.get_active_entries(&project).unwrap();
+    let entries_active = request.state().store.get_active_entries(project).unwrap();
     let entries_done = if show_done {
-        request.state().store.get_done_entries(&project).unwrap()
+        request.state().store.get_done_entries(project).unwrap()
     } else {
         crate::entry::Entries::default()
     };
@@ -301,7 +301,7 @@ async fn handler_api_v1_project_entries(
 ) -> Result<Response, tide::Error> {
     let project = request.param("project")?;
 
-    let entries = request.state().store.get_active_entries(&project).unwrap();
+    let entries = request.state().store.get_active_entries(project).unwrap();
 
     let response = Response::builder(200)
         .body(Body::from_json(&entries)?)
