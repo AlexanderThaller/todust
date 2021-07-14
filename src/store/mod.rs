@@ -132,7 +132,7 @@ impl Store {
     }
 
     fn get_entry_filename(&self, entry: &Metadata) -> PathBuf {
-        let entry_folder = self.get_entry_foldername(&entry);
+        let entry_folder = self.get_entry_foldername(entry);
 
         let mut entry_file = PathBuf::new();
         entry_file.push(entry_folder);
